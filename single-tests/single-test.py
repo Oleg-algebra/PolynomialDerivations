@@ -22,13 +22,16 @@ n= N
 l = N
 m = 0
 
-k = 2
-n = 6
-l = 2
-m = 6
+#powers of monomial by d/dx
+k = 0
+n = 1
 
-alpha = 8
-beta = 0
+#powers of monomial by d/dy
+l = 1
+m = 0
+
+alpha = 1
+beta = -1
 
 powers1 = [k, n]
 powers2 = [l, m]
@@ -62,6 +65,9 @@ polynomial2 = x**2*y**1
 # monom = (x*y)**n
 # polynomial1 *= monom
 # polynomial2 *= monom
+
+polynomial1 = -y
+polynomial2 = x
 
 polynomial1 = Polynomial(poly_symbols=polynomial1, variables=variables)
 polynomial2 = Polynomial(poly_symbols=polynomial2, variables=variables)
