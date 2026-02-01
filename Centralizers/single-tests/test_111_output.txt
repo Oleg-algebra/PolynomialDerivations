@@ -1,0 +1,16 @@
+Test results
+====================================================================================================
+Given derivation: [-x**2*y, x*y**2]
+K = 2 --- isProportional: True --- isSolution: True --- COMMUTATOR: [x*(-7*x*y - 3), y*(7*x*y + 3)]
+K = 3 --- isProportional: True --- isSolution: True --- COMMUTATOR: [x*(-5*x**2*y**2 - 5*x*y - 6), y*(5*x**2*y**2 + 5*x*y + 6)]
+K = 4 --- isProportional: True --- isSolution: True --- COMMUTATOR: [x*(-7*x**2*y**2 - 2*x*y - 6), y*(7*x**2*y**2 + 2*x*y + 6)]
+K = 5 --- isProportional: True --- isSolution: True --- COMMUTATOR: [x*(-7*x**3*y**3 - 2*x**2*y**2 - 7*x*y - 6), y*(7*x**3*y**3 + 2*x**2*y**2 + 7*x*y + 6)]
+K = 6 --- isProportional: True --- isSolution: True --- COMMUTATOR: [x*(-2*x**3*y**3 - x**2*y**2 - 4*x*y - 6), y*(2*x**3*y**3 + x**2*y**2 + 4*x*y + 6)]
+K = 7 --- isProportional: True --- isSolution: True --- COMMUTATOR: [x*(-7*x**4*y**4 - 8*x**3*y**3 - 5*x**2*y**2 - 8*x*y - 6), y*(7*x**4*y**4 + 8*x**3*y**3 + 5*x**2*y**2 + 8*x*y + 6)]
+K = 8 --- isProportional: True --- isSolution: True --- COMMUTATOR: [x*(-8*x**4*y**4 - 9*x**3*y**3 - 2*x**2*y**2 - 2*x*y - 6), y*(8*x**4*y**4 + 9*x**3*y**3 + 2*x**2*y**2 + 2*x*y + 6)]
+K = 9 --- isProportional: True --- isSolution: True --- COMMUTATOR: [x*(-x**5*y**5 - 5*x**4*y**4 - 9*x**3*y**3 - 9*x**2*y**2 - 8*x*y - 5), y*(x**5*y**5 + 5*x**4*y**4 + 9*x**3*y**3 + 9*x**2*y**2 + 8*x*y + 5)]
+K = 10 --- isProportional: True --- isSolution: True --- COMMUTATOR: [x*(-2*x**5*y**5 - 7*x**4*y**4 - 2*x**3*y**3 - 6*x**2*y**2 - 7*x*y - 6), y*(2*x**5*y**5 + 7*x**4*y**4 + 2*x**3*y**3 + 6*x**2*y**2 + 7*x*y + 6)]
+K = 11 --- isProportional: True --- isSolution: True --- COMMUTATOR: [x*(-5*x**6*y**6 - 9*x**5*y**5 - 8*x**4*y**4 - 8*x**3*y**3 - 4*x**2*y**2 - 9*x*y - 1), y*(5*x**6*y**6 + 9*x**5*y**5 + 8*x**4*y**4 + 8*x**3*y**3 + 4*x**2*y**2 + 9*x*y + 1)]
+K = 12 --- isProportional: True --- isSolution: True --- COMMUTATOR: [x*(-5*x**6*y**6 - 3*x**5*y**5 - x**4*y**4 - 4*x**3*y**3 - 8*x**2*y**2 - 7*x*y - 9), y*(5*x**6*y**6 + 3*x**5*y**5 + x**4*y**4 + 4*x**3*y**3 + 8*x**2*y**2 + 7*x*y + 9)]
+K = 13 --- isProportional: True --- isSolution: True --- COMMUTATOR: [x*(-9*x**7*y**7 - 6*x**6*y**6 - 8*x**5*y**5 - 3*x**4*y**4 - 4*x**3*y**3 - 5*x**2*y**2 - 2*x*y - 6), y*(9*x**7*y**7 + 6*x**6*y**6 + 8*x**5*y**5 + 3*x**4*y**4 + 4*x**3*y**3 + 5*x**2*y**2 + 2*x*y + 6)]
+K = 14 --- isProportional: True --- isSolution: True --- COMMUTATOR: [x*(-9*x**7*y**7 - x**6*y**6 - 8*x**5*y**5 - 4*x**4*y**4 - 3*x**3*y**3 - 4*x**2*y**2 - 3*x*y - 5), y*(9*x**7*y**7 + x**6*y**6 + 8*x**5*y**5 + 4*x**4*y**4 + 3*x**3*y**3 + 4*x**2*y**2 + 3*x*y + 5)]

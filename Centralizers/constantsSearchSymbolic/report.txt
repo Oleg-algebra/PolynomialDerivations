@@ -1,0 +1,19 @@
+Test results
+====================================================================================================
+Given derivation: [0, x**3*y]
+K = 0 --- isConstant: True --- constant: x**2 + 8*x + 6
+K = 1 --- isConstant: True --- constant: 6*x**2 + 8*x + 4
+K = 2 --- isConstant: True --- constant: 5*x**3 + 7*x**2 + 8*x + 3
+K = 3 --- isConstant: True --- constant: 7*x**4 + 7*x**3 + 9*x**2 + 5*x + 5
+K = 4 --- isConstant: True --- constant: 2*x**5 + 9*x**4 + 6*x**3 + 3*x**2 + 9*x + 4
+K = 5 --- isConstant: True --- constant: 2*x**6 + x**5 + 8*x**4 + 3*x**3 + 3*x**2 + 6*x + 3
+K = 6 --- isConstant: True --- constant: 9*x**7 + 3*x**6 + 3*x**5 + x**4 + 6*x**3 + 5*x**2 + 9*x + 8
+K = 7 --- isConstant: True --- constant: x**8 + 6*x**7 + 9*x**6 + 4*x**5 + 3*x**4 + 6*x**3 + 8*x**2 + 5*x + 5
+K = 8 --- isConstant: True --- constant: 2*x**9 + 9*x**8 + 6*x**7 + 2*x**6 + 4*x**5 + 2*x**4 + 5*x**3 + 9*x**2 + 3*x + 9
+K = 9 --- isConstant: True --- constant: 7*x**10 + 6*x**9 + x**8 + x**7 + 3*x**6 + x**5 + 9*x**4 + 2*x**3 + 7*x**2 + 5*x + 5
+K = 10 --- isConstant: True --- constant: 9*x**11 + 9*x**10 + 6*x**9 + 6*x**8 + 6*x**7 + 9*x**6 + 2*x**5 + 7*x**4 + 7*x**3 + 7*x**2 + 6*x + 6
+K = 11 --- isConstant: True --- constant: 8*x**12 + 4*x**11 + 7*x**10 + 2*x**9 + 5*x**8 + 8*x**7 + 7*x**6 + 3*x**5 + 6*x**4 + 7*x**3 + 8*x**2 + 8*x + 3
+K = 12 --- isConstant: True --- constant: 2*x**13 + x**12 + 4*x**11 + 7*x**10 + 2*x**9 + 7*x**8 + 7*x**7 + 2*x**6 + 8*x**5 + 3*x**4 + x**3 + 8*x**2 + 3*x + 9
+K = 13 --- isConstant: True --- constant: 7*x**14 + 2*x**13 + 7*x**12 + 9*x**11 + 4*x**10 + 2*x**9 + 5*x**8 + 9*x**7 + 3*x**6 + 3*x**5 + x**4 + 9*x**3 + 7*x**2 + 8*x + 3
+K = 14 --- isConstant: True --- constant: 4*x**15 + 7*x**14 + 2*x**13 + 4*x**12 + 2*x**11 + 9*x**10 + x**9 + 2*x**8 + 9*x**7 + 5*x**6 + 8*x**5 + 4*x**4 + 2*x**3 + 4*x**2 + 6*x + 4
+K = 15 --- isConstant: True --- constant: 3*x**16 + 4*x**15 + 4*x**14 + 9*x**13 + 9*x**12 + 5*x**11 + 4*x**10 + 8*x**9 + 6*x**8 + 8*x**7 + 3*x**6 + 9*x**5 + x**4 + x**3 + 2*x**2 + 6*x + 5
