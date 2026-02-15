@@ -1,6 +1,6 @@
 from time import time
 
-from basicClasses.CommutatorSearchSymbolic import *
+from Centralizers.basicClasses.CommutatorSearchSymbolic import *
 
 variables_number = 2
 isSearchNonZero = True

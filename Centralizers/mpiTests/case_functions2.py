@@ -74,7 +74,7 @@ def propCase(min_power, max_power, min_coeff, max_coeff):
 def alpha_beta_zero(min_power, max_power, min_coeff, max_coeff):
     l = np.random.randint(1, max_power + 1)
     m = np.random.randint(1, max_power + 1)
-    m = 1
+    l = 0
 
     k = np.random.randint(1, max_power + 1)
     n = np.random.randint(1, max_power + 1)

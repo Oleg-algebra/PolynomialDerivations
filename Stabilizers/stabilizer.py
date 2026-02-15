@@ -163,7 +163,7 @@ if __name__ == "__main__":
     # CASE 1: u=x^2, v=y^2 (Stabilizer should be u*du, v*dv -> rank 2)
     # J = 4xy. f,g must be multiples of u,v?
     print("=== TEST CASE 1: u=x^2, v=y^2 ===")
-    solve_stabilizer(x**2, y**2, max_degree=2)
+    solve_stabilizer(x**2, y**2, max_degree=3)
 
     print("\n" + "="*40 + "\n")
 

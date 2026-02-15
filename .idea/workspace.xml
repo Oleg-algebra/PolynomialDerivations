@@ -4,9 +4,19 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="bde47f7d-e407-4a35-9a63-3347d4582f4e" name="Changes" comment="added  visualization of vector fields simultaneously">
+    <list default="true" id="bde47f7d-e407-4a35-9a63-3347d4582f4e" name="Changes" comment="created Centralizers and Stabilizers directories">
+      <change afterPath="$PROJECT_DIR$/Centralizers/basicClasses/commutatorSearchSymbolicV2.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Centralizers/mpiTests/commutatorSearchSymbolicV2.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Centralizers/mpiTests/jobscriptv2.sh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Centralizers/mpiTests/test_mpi_v2.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Centralizers/single-tests/single_test_v2.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mpiTests/jobscript.sh" beforeDir="false" afterPath="$PROJECT_DIR$/mpiTests/jobscript.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Centralizers/mpiTests/case_101_log.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Centralizers/mpiTests/case_101_log.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Centralizers/mpiTests/case_777_log.txt" beforeDir="false" afterPath="$PROJECT_DIR$/Centralizers/mpiTests/case_777_log.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Centralizers/mpiTests/case_functions2.py" beforeDir="false" afterPath="$PROJECT_DIR$/Centralizers/mpiTests/case_functions2.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Centralizers/mpiTests/jobscript.sh" beforeDir="false" afterPath="$PROJECT_DIR$/Centralizers/mpiTests/jobscript.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Centralizers/single-tests/single-test.py" beforeDir="false" afterPath="$PROJECT_DIR$/Centralizers/single-tests/single-test.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Stabilizers/stabilizer.py" beforeDir="false" afterPath="$PROJECT_DIR$/Stabilizers/stabilizer.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -37,49 +47,53 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;Python.Commutator-search.executor&quot;: &quot;Run&quot;,
-    &quot;Python.CommutatorSearchSymbolic.executor&quot;: &quot;Run&quot;,
-    &quot;Python.constantSearchSymbolic.executor&quot;: &quot;Run&quot;,
-    &quot;Python.constant_search_test.executor&quot;: &quot;Run&quot;,
-    &quot;Python.matMul_V1_1.executor&quot;: &quot;Run&quot;,
-    &quot;Python.non_proportional_search.executor&quot;: &quot;Run&quot;,
-    &quot;Python.read_report.executor&quot;: &quot;Run&quot;,
-    &quot;Python.searchExample.executor&quot;: &quot;Run&quot;,
-    &quot;Python.single-test.executor&quot;: &quot;Run&quot;,
-    &quot;Python.single_test.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.test.executor&quot;: &quot;Run&quot;,
-    &quot;Python.test1_mpi.executor&quot;: &quot;Run&quot;,
-    &quot;Python.testLoop.executor&quot;: &quot;Run&quot;,
-    &quot;Python.test_mpi.executor&quot;: &quot;Run&quot;,
-    &quot;Python.transformations.executor&quot;: &quot;Run&quot;,
-    &quot;Python.vectorFieldsAnimation.executor&quot;: &quot;Run&quot;,
-    &quot;Python.visualizeTwoVF.executor&quot;: &quot;Run&quot;,
-    &quot;Python.visualizeVectorField.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;SHELLCHECK.PATH&quot;: &quot;/home/otyshchenko/.local/share/JetBrains/PyCharm2025.1/Shell Script/shellcheck&quot;,
-    &quot;Shell Script.job.sh.executor&quot;: &quot;Run&quot;,
-    &quot;Shell Script.jobscript.sh.executor&quot;: &quot;Run&quot;,
-    &quot;ai.playground.ignore.import.keys.banner.in.settings&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/media/olegt/MyData/University/Phd-Math/Дисертація/статті/2-Monomial-derivations/PolynomialDerivations&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.Commutator-search.executor": "Run",
+    "Python.CommutatorSearchSymbolic.executor": "Run",
+    "Python.constantSearchSymbolic.executor": "Run",
+    "Python.constant_search_test.executor": "Run",
+    "Python.matMul_V1_1.executor": "Run",
+    "Python.non_proportional_search.executor": "Run",
+    "Python.read_report.executor": "Run",
+    "Python.searchExample.executor": "Run",
+    "Python.single-test.executor": "Run",
+    "Python.single_test.executor": "Debug",
+    "Python.single_test_v2.executor": "Run",
+    "Python.stabilizer.executor": "Run",
+    "Python.test.executor": "Run",
+    "Python.test1_mpi.executor": "Run",
+    "Python.testLoop.executor": "Run",
+    "Python.test_mpi.executor": "Run",
+    "Python.transformations.executor": "Run",
+    "Python.vectorFieldsAnimation.executor": "Run",
+    "Python.visualizeTwoVF.executor": "Run",
+    "Python.visualizeVectorField.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "SHELLCHECK.PATH": "/home/otyshchenko/.local/share/JetBrains/PyCharm2025.1/Shell Script/shellcheck",
+    "Shell Script.job.sh.executor": "Run",
+    "Shell Script.jobscript.sh.executor": "Run",
+    "Shell Script.jobscriptv2.sh.executor": "Run",
+    "ai.playground.ignore.import.keys.banner.in.settings": "true",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "/media/olegt/MyData/University/Phd-Math/Дисертація/статті/2-Monomial-derivations/PolynomialDerivations/Centralizers/mpiTests",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/Centralizers/mpiTests" />
       <recent name="$PROJECT_DIR$/basicClasses" />
       <recent name="$PROJECT_DIR$/ConstantsSearchSymbolic" />
       <recent name="$PROJECT_DIR$/mpi-tests" />
@@ -96,8 +110,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-9b0f141eb926-JavaScript-PY-253.29346.308" />
-        <option value="bundled-python-sdk-ca5e2b39c7df-6e1f45a539f7-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-253.29346.308" />
+        <option value="bundled-python-sdk-4762d8aabb82-6d6dccd035ac-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-253.30387.173" />
       </set>
     </attachedChunks>
   </component>
@@ -173,14 +186,9 @@
       <workItem from="1766687311293" duration="2561000" />
       <workItem from="1767713263519" duration="6000" />
       <workItem from="1769182752828" duration="1447000" />
-    </task>
-    <task id="LOCAL-00001" summary="added mpi implementation">
-      <option name="closed" value="true" />
-      <created>1746305527049</created>
-      <option name="number" value="00001" />
-      <option name="presentableId" value="LOCAL-00001" />
-      <option name="project" value="LOCAL" />
-      <updated>1746305527049</updated>
+      <workItem from="1769957708901" duration="2412000" />
+      <workItem from="1770810328387" duration="658000" />
+      <workItem from="1771183311233" duration="4809000" />
     </task>
     <task id="LOCAL-00002" summary="corrected counting process">
       <option name="closed" value="true" />
@@ -566,7 +574,15 @@
       <option name="project" value="LOCAL" />
       <updated>1766690453504</updated>
     </task>
-    <option name="localTasksCounter" value="50" />
+    <task id="LOCAL-00050" summary="created Centralizers and Stabilizers directories">
+      <option name="closed" value="true" />
+      <created>1769957760188</created>
+      <option name="number" value="00050" />
+      <option name="presentableId" value="LOCAL-00050" />
+      <option name="project" value="LOCAL" />
+      <updated>1769957760189</updated>
+    </task>
+    <option name="localTasksCounter" value="51" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -584,7 +600,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="added short report version" />
     <MESSAGE value="added beep sound at the end in test_mpi.py" />
     <MESSAGE value="added reading of parameters from command line" />
     <MESSAGE value="made new directories" />
@@ -609,7 +624,8 @@
     <MESSAGE value="some minor changes" />
     <MESSAGE value="added vector fields visualization" />
     <MESSAGE value="added  visualization of vector fields simultaneously" />
-    <option name="LAST_COMMIT_MESSAGE" value="added  visualization of vector fields simultaneously" />
+    <MESSAGE value="created Centralizers and Stabilizers directories" />
+    <option name="LAST_COMMIT_MESSAGE" value="created Centralizers and Stabilizers directories" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -723,6 +739,16 @@
           <line>101</line>
           <option name="timeStamp" value="56" />
         </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/Stabilizers/stabilizer.py</url>
+          <line>74</line>
+          <option name="timeStamp" value="58" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/Centralizers/mpiTests/test_mpi.py</url>
+          <line>1</line>
+          <option name="timeStamp" value="59" />
+        </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
         <breakpoint type="python-exception">
@@ -739,6 +765,7 @@
     <SUITE FILE_PATH="coverage/MonomialDerivationCommutator$single_test.coverage" NAME="single-test Coverage Results" MODIFIED="1762277263515" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/single-tests" />
     <SUITE FILE_PATH="coverage/PolynomialDerivations$visualizeVectorField.coverage" NAME="visualizeVectorField Coverage Results" MODIFIED="1766688810932" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/vectorFields" />
     <SUITE FILE_PATH="coverage/PolynomialDerivations$visualizeTwoVF.coverage" NAME="visualizeTwoVF Coverage Results" MODIFIED="1766689100042" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/vectorFields" />
+    <SUITE FILE_PATH="coverage/PolynomialDerivations$stabilizer.coverage" NAME="stabilizer Coverage Results" MODIFIED="1769958170582" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Stabilizers" />
     <SUITE FILE_PATH="coverage/MonomialDerivationCommutator$test_mpi.coverage" NAME="test_mpi Coverage Results" MODIFIED="1755765505192" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/mpi-tests" />
     <SUITE FILE_PATH="coverage/PolynomialDerivations$constant_search_test.coverage" NAME="constant_search_test Coverage Results" MODIFIED="1763816998919" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/constantsSearchSymbolic" />
     <SUITE FILE_PATH="coverage/MonomialDerivationCommutator$vectorFieldsAnimation.coverage" NAME="vectorFieldsAnimation Coverage Results" MODIFIED="1762109029027" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/vectorFields" />
@@ -752,6 +779,7 @@
     <SUITE FILE_PATH="coverage/MonomialDerivationCommutator$test.coverage" NAME="test Coverage Results" MODIFIED="1762242873664" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/constantsSearchSymbolic" />
     <SUITE FILE_PATH="coverage/MonomialDerivationCommutator$Commutator_search.coverage" NAME="Commutator-search Coverage Results" MODIFIED="1746360551449" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/MonomialDerivationCommutator$constantSearchSymbolic.coverage" NAME="constantSearchSymbolic Coverage Results" MODIFIED="1753981853141" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/constantsSearchSymbolic" />
+    <SUITE FILE_PATH="coverage/PolynomialDerivations$single_test_v2.coverage" NAME="single_test_v2 Coverage Results" MODIFIED="1771186791120" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Centralizers/single-tests" />
     <SUITE FILE_PATH="coverage/MonomialDerivationCommutator$testLoop.coverage" NAME="testLoop Coverage Results" MODIFIED="1746359711339" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>
