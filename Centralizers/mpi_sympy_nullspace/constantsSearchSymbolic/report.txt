@@ -1,0 +1,20 @@
+Результати тестування пошуку перших інтегралів
+================================================================================
+Вихідне диференціювання: D = (0)d/dx + (x**3*y)d/dy
+
+K =  0 | IsConstant: True  | Constant: 1
+K =  1 | IsConstant: True  | Constant: 1
+K =  2 | IsConstant: True  | Constant: 1
+K =  3 | IsConstant: True  | Constant: 1
+K =  4 | IsConstant: True  | Constant: 1
+K =  5 | IsConstant: True  | Constant: 1
+K =  6 | IsConstant: True  | Constant: 1
+K =  7 | IsConstant: True  | Constant: 1
+K =  8 | IsConstant: True  | Constant: 1
+K =  9 | IsConstant: True  | Constant: 1
+K = 10 | IsConstant: True  | Constant: 1
+K = 11 | IsConstant: True  | Constant: 1
+K = 12 | IsConstant: True  | Constant: 1
+K = 13 | IsConstant: True  | Constant: 1
+K = 14 | IsConstant: True  | Constant: 1
+K = 15 | IsConstant: True  | Constant: 1

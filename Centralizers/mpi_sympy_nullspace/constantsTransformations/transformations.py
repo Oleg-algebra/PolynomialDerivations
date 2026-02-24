@@ -1,9 +1,9 @@
 from searchExample import *
-from basicClasses.CommutatorSearchSymbolic import *
-from basicClasses.constantSearchSymbolic import *
-from sympy import Symbol
 
-derivation,commutator,constant = getExample()
+
+
+#TODO: Refactoring needed
+derivation,commutator,constant = run_example()
 
 # x,y = Symbol('x'), Symbol('y')
 # vars = [x,y]
@@ -17,14 +17,14 @@ derivation,commutator,constant = getExample()
 # poly_comm2 = Polynomial(poly_symbols=2*y,vars = vars)
 # commutator = Derivation([poly_comm1,poly_comm2],vars)
 
-print(derivation.take_derivative(constant))
+print(derivation.apply(constant))
 lie_bracket_result = lie_bracket(derivation1=derivation,derivation2=commutator)
 for poly in lie_bracket_result.polynomials:
     print(poly.polynomial_symbolic)
 
 counter = 0
 print(f"{counter} -- {constant}")
-while True and counter < 20:
+while True and counter < 1:
 
     new_constant = commutator.take_derivative(constant)
 

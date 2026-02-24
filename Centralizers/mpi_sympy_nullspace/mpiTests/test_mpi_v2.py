@@ -37,7 +37,7 @@ tests_per_rank = total_tests // size + (1 if rank < total_tests % size else 0)
 # --- Configuration ---
 from case_functions2 import get_parameters  # Import helper
 
-limit_cfg = {"min_c": -15, "max_c": 15, "min_p": 0, "max_p": 15}
+limit_cfg = {"min_c": -20, "max_c": 20, "min_p": 0, "max_p": 15}
 MAX_K_SEARCH = 5
 
 # --- Metrics ---

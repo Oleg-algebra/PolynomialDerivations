@@ -9,7 +9,7 @@ variables = [x, y]
 
 # You can define your polynomials directly as SymPy expressions
 # Example: The rotation derivation (-y*d/dx + x*d/dy)
-poly1 = -y
+poly1 = y
 poly2 = x
 
 startTime = time()
