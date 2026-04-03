@@ -27,6 +27,9 @@ class FastCommutatorFinder:
         self.max_k = max_k
 
     def find_commutator(self):
+
+        best_solution = None
+        is_proportional = False
         """Швидкий пошук через nullspace матриці."""
         for k in range(self.max_k + 1):
             # Визначаємо степінь шуканого диференціювання
@@ -71,10 +74,13 @@ class FastCommutatorFinder:
                 # та чи не є він пропорційним вихідному D
                 if not result_der.is_zero():
                     is_prop = self.check_proportionality(self.der, result_der)
+                    if best_solution == None:
+                        best_solution = result_der
+                        is_proportional = is_prop
                     if not is_prop:
                         return result_der, False # Знайдено незалежне диференціювання
 
-        return None, False
+        return best_solution,is_proportional
 
     def _generate_unknown_derivation(self, degree):
         """Створює Du з символьними коефіцієнтами."""

@@ -1,0 +1,62 @@
+Commutator Search Report - Case 777
+------------------------------
+correct: 50
+incorrect: 0
+proportional: 0
+unproportional: 50
+zero: 0
+total_time: 139.06714844703674
+
+Detailed Unproportional Solutions:
+Params (2, 3, 0, 1, 5, -15) -> Found: [0, y]
+Params (4, 5, 1, 2, -6, 15) -> Found: [-x/4, y]
+Params (6, 7, 0, 1, -16, 112) -> Found: [0, y]
+Params (9, 10, 0, 1, -1, 10) -> Found: [0, y]
+Params (1, 2, 0, 1, -6, 12) -> Found: [0, y]
+Params (8, 9, 0, 1, -1, 9) -> Found: [0, y]
+Params (5, 6, 3, 4, -60, 90) -> Found: [-3*x/5, y]
+Params (3, 4, 5, 6, -108, 72) -> Found: [-5*x/3, y]
+Params (3, 4, 2, 3, 42, -56) -> Found: [-2*x/3, y]
+Params (7, 8, 5, 6, 84, -112) -> Found: [-5*x/7, y]
+Params (1, 2, 5, 6, -90, 30) -> Found: [-5*x, y]
+Params (8, 9, 5, 6, 24, -36) -> Found: [-5*x/8, y]
+Params (5, 6, 8, 9, 36, -24) -> Found: [-8*x/5, y]
+Params (4, 5, 0, 1, 8, -40) -> Found: [0, y]
+Params (1, 2, 7, 8, 16, -4) -> Found: [-7*x, y]
+Params (1, 2, 9, 10, -150, 30) -> Found: [-9*x, y]
+Params (3, 4, 8, 9, -162, 72) -> Found: [-8*x/3, y]
+Params (0, 1, 4, 5, -45, 9) -> Found: [x, 0]
+Params (2, 3, 1, 2, -22, 33) -> Found: [-x/2, y]
+Params (9, 10, 3, 4, -76, 190) -> Found: [-x/3, y]
+Params (8, 9, 0, 1, 2, -18) -> Found: [0, y]
+Params (0, 1, 2, 3, -48, 16) -> Found: [x, 0]
+Params (8, 9, 4, 5, -20, 36) -> Found: [-x/2, y]
+Params (7, 8, 8, 9, 36, -32) -> Found: [-8*x/7, y]
+Params (4, 5, 0, 1, -11, 55) -> Found: [0, y]
+Params (7, 8, 6, 7, 28, -32) -> Found: [-6*x/7, y]
+Params (7, 8, 4, 5, 10, -16) -> Found: [-4*x/7, y]
+Params (5, 6, 8, 9, 126, -84) -> Found: [-8*x/5, y]
+Params (7, 8, 0, 1, -15, 120) -> Found: [0, y]
+Params (3, 4, 0, 1, 5, -20) -> Found: [0, y]
+Params (1, 2, 2, 3, -12, 8) -> Found: [-2*x, y]
+Params (9, 10, 5, 6, 66, -110) -> Found: [-5*x/9, y]
+Params (6, 7, 1, 2, 30, -105) -> Found: [-x/6, y]
+Params (6, 7, 4, 5, -95, 133) -> Found: [-2*x/3, y]
+Params (9, 10, 3, 4, -40, 100) -> Found: [-x/3, y]
+Params (4, 5, 0, 1, -2, 10) -> Found: [0, y]
+Params (8, 9, 1, 2, 36, -162) -> Found: [-x/8, y]
+Params (6, 7, 4, 5, -40, 56) -> Found: [-2*x/3, y]
+Params (6, 7, 8, 9, 180, -140) -> Found: [-4*x/3, y]
+Params (3, 4, 6, 7, -63, 36) -> Found: [-2*x, y]
+Params (3, 4, 5, 6, 24, -16) -> Found: [-5*x/3, y]
+Params (3, 4, 2, 3, 24, -32) -> Found: [-2*x/3, y]
+Params (0, 1, 9, 10, 190, -19) -> Found: [x, 0]
+Params (4, 5, 6, 7, 105, -75) -> Found: [-3*x/2, y]
+Params (8, 9, 4, 5, -60, 108) -> Found: [-x/2, y]
+Params (8, 9, 5, 6, -12, 18) -> Found: [-5*x/8, y]
+Params (8, 9, 6, 7, 56, -72) -> Found: [-3*x/4, y]
+Params (6, 7, 7, 8, -112, 98) -> Found: [-7*x/6, y]
+Params (7, 8, 8, 9, -81, 72) -> Found: [-8*x/7, y]
+Params (8, 9, 7, 8, 40, -45) -> Found: [-7*x/8, y]
+
+Detailed Proportional Solutions:
