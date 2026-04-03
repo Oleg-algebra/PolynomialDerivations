@@ -1,11 +1,9 @@
 import time
 
-import pylab as p
-from sympy import symbols, diff, expand, Poly, Matrix, nsimplify, linear_eq_to_matrix, simplify
-from typing import List, Tuple
+from typing import List
 from dataclasses import dataclass
-from giacpy import giac, linsolve,scalar_product, syst2mat
-from giacpy.giacpy import Pygen, potential
+from giacpy import giac,  syst2mat
+from giacpy.giacpy import Pygen
 
 
 @dataclass
@@ -104,14 +102,17 @@ class FastCommutatorFinder:
         density = (non_zeros / total_cells) * 100
         return density, non_zeros
 
+    def hash_polynomialPygen(self,derivation: Derivation) -> int:
+        key = "--".join([str(p) for p in derivation.polynomials])
+        return hash(key)
 
-    def find_commutator(self):
+    def find_commutator(self) -> dict:
         """Швидкий пошук через nullspace матриці."""
         current_k = 1
 
         best_solution = None
         is_proportional = False
-        all_solutions = []
+        all_solutions = {}
         while current_k <= self.max_k:
 
 
@@ -159,24 +160,14 @@ class FastCommutatorFinder:
                     print("Not valid solution")
                     continue
 
-                all_solutions.append((potential_solution,self.check_proportionality(self.der,potential_solution)))
-            # solution = linsolve(equations,coeffs)
-            #
-            # new_polynomials = []
-            # for i in range(len(self.vars)):
-            #     m = len(coeffs) // len(self.vars)
-            #     old = coeffs[m*i:m*(i + 1)]
-            #     new = solution[m*i:m*(i + 1)]
-            #     new_polynomials.append(unknown_der.polynomials[i].subst(old,new).simplify())
-            # # print(new_polynomials)
-            # unknown_der.polynomials = new_polynomials
+                hash_der = self.hash_polynomialPygen(potential_solution)
+                if hash_der not in all_solutions:
+                    all_solutions[hash_der] = {
+                        "derivation_solution" : potential_solution,
+                        "is_proportional" : self.check_proportionality(self.der, potential_solution),
+                        "is_valid" : self.is_solution_valid(potential_solution)
+                    }
 
-            # if unknown_der.is_zero():
-            #     current_k += 1
-            #     continue
-            #
-            # if not self.is_solution_valid(unknown_der):
-            #     print("Not valid solution")
 
             current_k += 1
 
@@ -212,12 +203,15 @@ class FastCommutatorFinder:
 
 if __name__ == "__main__":
     x, y = giac('x, y')
-    f_x = y**2
+    f_x:Pygen = y**2
     f_y = x**2
-
+    print(f_x.str())
 
     K = 10
     der = Derivation([f_x, f_y], [x, y])
+
+    dct = {"--".join([str(p) for p in der.polynomials]) : der}
+    print(dct)
     print(f"Given derivative: {der}")
     commut_search = FastCommutatorFinder(der,K)
     # commuting_derivative, is_proportional = commut_search.find_commutator()
@@ -227,7 +221,8 @@ if __name__ == "__main__":
     all_solutions = commut_search.find_commutator()
     end = time.time()
 
-    for solution in all_solutions:
+
+    for hash, solution in all_solutions.items():
         print(solution)
 
     print(f"execution time: {end - start}")

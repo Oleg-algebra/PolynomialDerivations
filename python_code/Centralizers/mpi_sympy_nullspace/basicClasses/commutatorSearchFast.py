@@ -32,6 +32,7 @@ class FastCommutatorFinder:
         is_proportional = False
         """Швидкий пошук через nullspace матриці."""
         for k in range(self.max_k + 1):
+            print(f'k = {k}')
             # Визначаємо степінь шуканого диференціювання
             # (степінь вихідного + k)
             max_p_deg = max((Poly(p, self.vars).total_degree() if not p.is_zero else 0)
