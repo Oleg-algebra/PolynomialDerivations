@@ -130,6 +130,7 @@ if rank == 0:
     print(f"Correct/Incorrect: {metrics['correct']}/{metrics['incorrect']}")
     print(f"Proportional/Unprop/Zero: {metrics['proportional']}/{metrics['unproportional']}/{metrics['zero']}")
     print(f"Avg Time per Test: {metrics['total_time'] / len(final_report):.4f}s")
+    print(f"Total time Test: {metrics['total_time'] :.4f}s")
     print("=" * 50)
 
     # --- Save Log ---

@@ -53,7 +53,9 @@ class CommutatorFinder:
 
     def find_commutator(self) -> Tuple[Derivation, bool]:
         """Search for a derivation D_u such that [D, D_u] = 0."""
+        last_result = None
         while self.k < self.max_k:
+            # print(f"solving for k = {self.k}")
             degree = self._get_search_degree()
             unknown_der, coeffs = self._generate_unknown_derivation(degree)
 
@@ -87,15 +89,15 @@ class CommutatorFinder:
                 final_p = p.subs(random_map)
                 final_polys.append(nsimplify(final_p, rational=True))
 
-
             result_der = Derivation(final_polys, self.vars)
+            last_result = result_der
 
-            if not result_der.is_zero():
+            if not self.check_proportionality(self.der, result_der):
                 return result_der, self.check_proportionality(self.der, result_der)
 
             self.k += 1
 
-        return unknown_der, False
+        return last_result, self.check_proportionality(self.der, last_result)
 
     @staticmethod
     def check_proportionality(d1: Derivation, d2: Derivation) -> bool:
