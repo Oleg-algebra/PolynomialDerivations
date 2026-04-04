@@ -103,6 +103,8 @@ def worker_task(task_packet):
 
 
 def run_research():
+
+    start_research = time.time()
     # --- Конфігурація ---
     limit_cfg = {"min_power": 0, "max_power": 10, "min_coeff": -20, "max_coeff": 20}
 
@@ -141,7 +143,7 @@ def run_research():
     # 3. Аналіз результатів (Master)
     metrics = {
         "correct": 0, "incorrect": 0, "proportional": 0,
-        "unproportional": 0, "zero": 0, "total_time": 0.0, "errors": 0
+        "unproportional": 0, "zero": 0, "total_time": 0.0, "errors": 0, "timed_out": 0
     }
 
     for res_data in final_results:
@@ -154,6 +156,7 @@ def run_research():
             continue
         elif res_data["status"] == 'timeout':
             print("--> time")
+            metrics["timed_out"] += 1
             metrics["total_time"] += res_data["time"]
         elif res_data["status"] == 'success':
             print("--> OK")
@@ -173,16 +176,16 @@ def run_research():
                     metrics["proportional"] += 1
                 else:
                     metrics["unproportional"] += 1
-
+    end_research = time.time()
     # --- Print Summary (як у вас) ---
     print("\n" + "=" * 50)
     print(f"FINAL SUMMARY FOR CASE {args.case}")
-    print(f"Total Tests: {len(final_results)} (Errors: {metrics['errors']})")
+    print(f"Total Tests: {len(final_results)} (Errors: {metrics['errors']}, Time_out: {metrics["timed_out"]})")
     print(f"Correct/Incorrect: {metrics['correct']}/{metrics['incorrect']}")
     print(f"Proportional/Unprop: {metrics['proportional']}/{metrics['unproportional']}")
     if len(final_results) > 0:
         print(f"Avg Time per Test: {metrics['total_time'] / len(final_results):.4f}s")
-    print(f"Total time: {metrics['total_time']}")
+    print(f"Total time: {end_research-start_research}")
     print("=" * 50)
 
 

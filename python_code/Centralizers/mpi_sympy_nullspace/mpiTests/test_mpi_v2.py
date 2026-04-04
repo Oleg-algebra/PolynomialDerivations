@@ -12,6 +12,8 @@ from commutatorSearchSymbolicV2 import Derivation, CommutatorFinder
 
 # Performance tuning
 sys.setrecursionlimit(10 ** 6)
+start_research_time = 0
+end_research_time = 0
 
 comm = MPI.COMM_WORLD
 size = comm.Get_size()
@@ -19,6 +21,8 @@ rank = comm.Get_rank()
 
 # --- Argument Parsing (Root only) ---
 if rank == 0:
+    start_research_time = time.time()
+
     parser = argparse.ArgumentParser(description="MPI Commutator Search Test")
     parser.add_argument("--case", type=int, required=True, help="case number")
     parser.add_argument("--it", type=int, default=1, help="iteration number")
@@ -123,6 +127,7 @@ if rank == 0:
         else:
             metrics["unproportional"] += 1
 
+    end_research_time = time.time()
     # --- Print Summary ---
     print("\n" + "=" * 50)
     print(f"RESULTS FOR CASE {case}")
@@ -130,7 +135,7 @@ if rank == 0:
     print(f"Correct/Incorrect: {metrics['correct']}/{metrics['incorrect']}")
     print(f"Proportional/Unprop/Zero: {metrics['proportional']}/{metrics['unproportional']}/{metrics['zero']}")
     print(f"Avg Time per Test: {metrics['total_time'] / len(final_report):.4f}s")
-    print(f"Total time Test: {metrics['total_time'] :.4f}s")
+    print(f"Total time Test: {end_research_time - start_research_time :.4f}s")
     print("=" * 50)
 
     # --- Save Log ---
