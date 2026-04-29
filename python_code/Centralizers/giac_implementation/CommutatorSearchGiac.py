@@ -1,16 +1,16 @@
 import time
-
-from typing import List
+from sympy import sympify, Poly, symbols
+from typing import List, Any
 from dataclasses import dataclass
-from giacpy import giac,  syst2mat
+from giacpy import giac,  syst2mat, solve, matrix
 from giacpy.giacpy import Pygen
 
 
 @dataclass
 class Derivation:
     """Represents a derivation D = P1*d/dx1 + P2*d/dx2."""
-    polynomials: List[Pygen] | List[str] # SymPy Expressions
-    variables: List[Pygen] | List[str]
+    polynomials: List[Pygen | Poly] # SymPy Expressions
+    variables: List[Pygen | Any]
 
     def apply(self, expression) -> Pygen:
         """
@@ -44,11 +44,167 @@ class Derivation:
 
         return Derivation(polynomials=new_polynomials, variables=self.variables)
 
+    def find_critical_points(self) -> List[Pygen]:
+        """
+        Знаходить критичні точки деривації, розв'язуючи систему P1=0, P2=0...
+        Використовує базиси Грьобнера всередині Giac для пошуку всіх коренів.
+        """
+
+        # 1. Формуємо список рівнянь (коефіцієнти прирівнюємо до 0)
+        # В Giac запис solve([eq1, eq2], [var1, var2]) шукає спільні корені
+        try:
+            # Використовуємо .rat().normal() для спрощення перед розв'язанням
+            equations = [p.normal() for p in self.polynomials]
+
+            # 2. Викликаємо солвер Giac
+            # solve повертає список розв'язків у форматі [[x1, y1], [x2, y2]...]
+            points: Pygen = solve(equations, self.variables)
+
+            return list(points)
+        except Exception as e:
+            return f"Помилка при пошуку критичних точок: {e}"
+
+    def get_jacobian(self) -> Pygen:
+        """
+        Будує матрицю Якобі вручну: J[i][j] = d(Pi) / d(xj)
+        """
+
+        # Створюємо список списків (матрицю)
+        # Зовнішній цикл — по поліномах (рядки)
+        # Внутрішній — по змінних (стовпці)
+        matrix_data = []
+        for p in self.polynomials:
+            row = [p.diff(v).normal() for v in self.variables]
+            matrix_data.append(row)
+
+        # Конвертуємо список Python у матрицю Giac
+        return matrix(matrix_data)
+
+    def classify_critical_points(self) -> List[dict]:
+        """
+        Класифікує критичні точки (ізольовані та лінії) за власними значеннями.
+        """
+        points = self.find_critical_points()
+        print(points)
+        if isinstance(points, str):
+            return []
+
+        jac = self.get_jacobian()
+        classification = []
+
+        for pt in points:
+            # 1. Визначаємо, чи є точка ізольованою (числовою) чи частиною континууму
+            is_symbolic = any(any(pt[i].has(v) == 1 for v in self.variables) for i in range(len(pt)))
+
+            # Підставляємо точку в Якобіан
+            current_jac = jac.subs(self.variables, pt)
+            evs = current_jac.eigenvalues()
+
+            entry = {
+                "point": [str(c) for c in pt],
+                "eigenvalues": [str(e) for e in evs],
+                "is_continuum": is_symbolic
+            }
+
+            if not is_symbolic:
+                # --- ЛОГІКА ДЛЯ ІЗОЛЬОВАНИХ ТОЧОК ---
+                try:
+                    reals = [float(ev.re()) for ev in evs]
+                    imags = [float(ev.im()) for ev in evs]
+
+                    if all(r < -1e-9 for r in reals):
+                        pt_type = "Stable (Sink)"
+                    elif all(r > 1e-9 for r in reals):
+                        pt_type = "Unstable (Source)"
+                    elif any(r > 1e-9 for r in reals) and any(r < -1e-9 for r in reals):
+                        pt_type = "Saddle"
+                    elif all(abs(r) < 1e-9 for r in reals) and any(abs(i) > 1e-9 for i in imags):
+                        pt_type = "Center (Linearized)"
+                    else:
+                        pt_type = "Degenerate/Other"
+                except (TypeError, ValueError):
+                    pt_type = "Non-numeric (Parameters present)"
+            else:
+                # --- ЛОГІКА ДЛЯ КОНТИНУУМУ (ЛІНІЙ ТОЧОК) ---
+                # На лінії рівноваги принаймні одне власне значення завжди 0
+                non_zero_evs = [ev for ev in evs if str(ev.normal()) != "0"]
+
+                if not non_zero_evs:
+                    pt_type = "Line of Critical Points (Fully Degenerate)"
+                else:
+                    # Беремо дійсні частини ненульових (трансверсальних) власних значень
+                    try:
+                        # Спробуємо оцінити знаки, якщо вираз дозволяє
+                        t_reals = [float(ev.re()) for ev in non_zero_evs if ev.re().is_number()]
+
+                        if not t_reals:
+                            pt_type = "Line: Parametric Stability"
+                        elif all(r < -1e-9 for r in t_reals):
+                            pt_type = "Stable Line (Transversal Sink)"
+                        elif all(r > 1e-9 for r in t_reals):
+                            pt_type = "Unstable Line (Transversal Source)"
+                        else:
+                            pt_type = "Line: Mixed/Saddle Stability"
+                    except:
+                        pt_type = "Line: Complex Symbolic Stability"
+
+            entry["type"] = pt_type
+            classification.append(entry)
+
+        return classification
+
+    def count_critical_points(self):
+        """
+        Повертає кількість точок або float('inf'), якщо розв'язків нескінченно.
+        """
+        points = self.find_critical_points()
+        print(points)
+        if isinstance(points, str):  # Помилка
+            return 0
+
+        # Перевіряємо кожен розв'язок на наявність символів
+        for pt in points:
+            for coord in pt:
+                # Якщо координата містить будь-яку зі змінних системи,
+                # значить розв'язок залежить від параметра (нескінченна множина)
+                # В Giac перевірка наявності змінної через .has()
+                for var in self.variables:
+                    flag = coord.has(var)
+                    if flag == 1:
+                        return float('inf')
+
+                # Додаткова перевірка: якщо координата не є числом
+                # (наприклад, буквенний параметр alpha, який не був заданий числівником)
+                # if not coord.is_number():
+                #     return float('inf')
+
+        return len(points)
+
     def __matmul__(self, other):
         """Дозволяє запис D3 = D1 @ D2 для комутатора."""
         return self.bracket(other)
 
+    def to_sympy(self) -> 'Derivation':
+        """
+        Конвертує поточну деривацію з Giac у SymPy.Poly для передачі через MPI/Pool.
+        """
 
+
+        # Створюємо символи SymPy
+        s_vars = symbols([str(v) for v in self.variables])
+
+        s_polynomials = []
+        for p in self.polynomials:
+            # 1. str(p) у Giac використовує ^ для степеня.
+            # sympify(..., convert_xor=True) коректно перетворить ^ у **.
+            p_str = str(p.normal())
+            s_expr = sympify(p_str)
+
+            # 2. Створюємо SymPy Poly. Це важливо для збереження методів .LT(), .coeffs() тощо.
+            s_poly = Poly(s_expr, *s_vars)
+            s_polynomials.append(s_poly)
+
+        return Derivation(polynomials=s_polynomials, variables=s_vars)
 
 
 class FastCommutatorFinder:
@@ -108,13 +264,13 @@ class FastCommutatorFinder:
 
     def find_commutator(self) -> dict:
         """Швидкий пошук через nullspace матриці."""
-        current_k = 1
+        current_k = 0
 
         best_solution = None
         is_proportional = False
         all_solutions = {}
         while current_k <= self.max_k:
-
+            # print(current_k)
 
             # 1. Генеруємо невідомі коефіцієнти
             unknown_der, coeffs = self._generate_unknown_derivation(current_k)
@@ -171,6 +327,8 @@ class FastCommutatorFinder:
 
             current_k += 1
 
+        # print("++++++++")
+        # print(all_solutions)
         return all_solutions
 
     def _generate_unknown_derivation(self, degree):
