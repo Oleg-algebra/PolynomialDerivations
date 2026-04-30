@@ -73,7 +73,7 @@ def worker():
             start_t = time.time()
             given_der = Derivation([m1, m2], [x, y])
             finder = FastCommutatorFinder(given_der, max_k=12)
-            all_solutions = finder.find_commutator()
+            all_solutions, is_proportional = finder.find_commutator()
 
             # Формуємо JSON-сумісний словник
             found_dict = {}
@@ -82,13 +82,14 @@ def worker():
                 found_dict[str(s_id)] = {
                     "is_valid": bool(sol["is_valid"]),
                     "is_proportional": bool(sol["is_proportional"]),
-                    "poly_strs": [str(p.normal()) for p in der_obj.polynomials]
+                    "commuting_derivative": der_obj.to_sympy()
                 }
 
             result_payload = {
                 "status": "success",
                 "params": params,
-                "GIVEN": [str(m1), str(m2)],
+                "GIVEN": given_der.to_sympy(),
+                "RANK": 1 if is_proportional else 2,
                 "FOUND": found_dict,
                 "time": time.time() - start_t
             }
@@ -96,7 +97,7 @@ def worker():
             result_payload = {"status": "error", "message": str(e), "params": params}
 
         # Відправляємо JSON-рядок (це найбезпечніше)
-        comm.send(json.dumps(result_payload), dest=0, tag=TAG_RESULT)
+        comm.send(result_payload, dest=0, tag=TAG_RESULT)
 
         # Примусове очищення Giac після кожного завдання
         with silence_giac():
@@ -123,7 +124,8 @@ def master(total_it, case_id):
         print(tests_received)
         status = MPI.Status()
         raw_json = comm.recv(source=MPI.ANY_SOURCE, tag=TAG_RESULT, status=status)
-        res_data = json.loads(raw_json)
+        # res_data = json.loads(raw_json)
+        res_data = raw_json
         worker_id = status.Get_source()
         tests_received += 1
 
@@ -158,5 +160,11 @@ if __name__ == "__main__":
         # Вкажіть параметри тут прямо
         results = master(total_it=total_tests, case_id=case)
         print(f"Done! Collected {len(results)} tests.")
+        for res in results:
+            print()
+            print(f"{res["GIVEN"]}, --> rank(C_W) = {res["RANK"]}")
+            for der in res["FOUND"].values():
+                print(der['commuting_derivative'])
+
     else:
         worker()
