@@ -91,6 +91,7 @@ def worker():
                 "GIVEN": given_der.to_sympy(),
                 "RANK": 1 if is_proportional else 2,
                 "FOUND": found_dict,
+                "critical_points_types" : given_der.classify_critical_points(),
                 "time": time.time() - start_t
             }
         except Exception as e:
@@ -160,11 +161,13 @@ if __name__ == "__main__":
         # Вкажіть параметри тут прямо
         results = master(total_it=total_tests, case_id=case)
         print(f"Done! Collected {len(results)} tests.")
-        for res in results:
+        for i in range(len(results)):
             print()
-            print(f"{res["GIVEN"]}, --> rank(C_W) = {res["RANK"]}")
-            for der in res["FOUND"].values():
-                print(der['commuting_derivative'])
-
+            print(f"count {i}")
+            res = results[i]
+            for k,v in res.items():
+                print(k,v)
+        print("=======ALL DONE=======")
+        exit(0)
     else:
         worker()

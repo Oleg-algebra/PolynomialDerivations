@@ -85,7 +85,7 @@ class Derivation:
         Класифікує критичні точки (ізольовані та лінії) за власними значеннями.
         """
         points = self.find_critical_points()
-        print(points)
+        # print(points)
         if isinstance(points, str):
             return []
 
@@ -205,6 +205,31 @@ class Derivation:
             s_polynomials.append(s_poly)
 
         return Derivation(polynomials=s_polynomials, variables=s_vars)
+
+    def from_sympy(self) -> 'Derivation':
+        """
+        Конвертує деривацію з SymPy назад у Giac для виконання швидких обчислень.
+        """
+        from giacpy import giac
+
+        # 1. Відновлюємо змінні Giac
+        # Створюємо список об'єктів giac(gen) на основі імен символів SymPy
+        g_vars = [giac(str(v)) for v in self.variables]
+
+        g_polynomials = []
+        for p in self.polynomials:
+            # 2. Перетворюємо SymPy Poly назад у вираз, а потім у рядок
+            # p.as_expr() видаляє специфічну обгортку Poly, залишаючи чистий поліном
+            p_str = str(p.as_expr())
+
+            # 3. Створюємо об'єкт Giac.
+            # Метод .normal() гарантує, що Giac правильно розпарсить і спростить вираз
+            g_poly = giac(p_str).normal()
+            g_polynomials.append(g_poly)
+
+        # Повертаємо новий екземпляр класу з Giac-об'єктами
+        return Derivation(polynomials=g_polynomials, variables=g_vars)
+
 
 
 class FastCommutatorFinder:
