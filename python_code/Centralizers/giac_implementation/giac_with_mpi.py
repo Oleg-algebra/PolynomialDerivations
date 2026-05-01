@@ -1,11 +1,71 @@
 import time
-import json
 import os
 import argparse
 import sys
 from mpi4py import MPI
 from contextlib import contextmanager
 
+import json
+import datetime
+import uuid
+from typing import Any
+
+
+def get_existing_hashes(filename="results_log.jsonl"):
+    existing_hashes = set()
+    try:
+        with open(filename, "r", encoding="utf-8") as f:
+            for line in f:
+                entry = json.loads(line)
+                # Дістаємо хеш із вкладеної структури data
+                h = entry.get('data', {}).get('hash')
+                if h:
+                    existing_hashes.add(h)
+    except FileNotFoundError:
+        pass # Файлу ще немає, це нормально
+    return existing_hashes
+
+def serialize_research_data(obj: Any) -> Any:
+    """
+    Рекурсивно конвертує об'єкти дослідження в JSON-сумісні типи.
+    """
+    # 1. Обробка вашого класу Derivation
+    if hasattr(obj, 'polynomials') and hasattr(obj, 'variables'):
+        return {
+            "type": "Derivation",
+            "poly": [str(p.as_expr()) for p in obj.polynomials],
+            "vars": [str(v) for v in obj.variables]
+        }
+
+    # 2. Обробка SymPy Poly
+    if hasattr(obj, 'as_expr'):
+        return str(obj.as_expr())
+
+    # 3. Обробка стандартних структур
+    if isinstance(obj, dict):
+        return {k: serialize_research_data(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [serialize_research_data(i) for i in obj]
+
+    # 4. Базові типи
+    return obj
+
+
+def append_to_research_log(result: dict, filename: str = "results_log.jsonl"):
+    """
+    Додає один результат обчислення в файл.
+    """
+    # Збагачуємо дані метаінформацією
+    payload = {
+        "id": str(uuid.uuid4())[:8],
+        "timestamp": datetime.datetime.now().isoformat(),
+        "data": serialize_research_data(result)
+    }
+
+    with open(filename, "a", encoding="utf-8") as f:
+        # ensure_ascii=False дозволяє бачити кирилицю та змінні як є
+        line = json.dumps(payload, ensure_ascii=False)
+        f.write(line + "\n")
 
 # 1. КОНТЕКСТ ТИШІ
 @contextmanager
@@ -88,6 +148,7 @@ def worker():
             result_payload = {
                 "status": "success",
                 "params": params,
+                "hash" : finder.hash_polynomialPygen(given_der),
                 "GIVEN": given_der.to_sympy(),
                 "RANK": 1 if is_proportional else 2,
                 "FOUND": found_dict,
@@ -113,6 +174,9 @@ def master(total_it, case_id):
     tests_sent = 0
     tests_received = 0
 
+    processed_hashes = get_existing_hashes()
+    print(f"[*] Завантажено {len(processed_hashes)} існуючих результатів.")
+
     # Роздаємо перші завдання
     for worker_id in range(1, size):
         if tests_sent < total_it:
@@ -129,9 +193,18 @@ def master(total_it, case_id):
         res_data = raw_json
         worker_id = status.Get_source()
         tests_received += 1
+        current_hash = res_data.get('hash')
 
         if res_data["status"] == "success":
             final_results.append(res_data)
+
+            if current_hash in processed_hashes:
+                print(f"[!] Дублікат пропущено: {current_hash}")
+            else:
+                append_to_research_log(res_data)
+                processed_hashes.add(current_hash)
+                print(f"[+] Новий результат збережено: {current_hash}")
+
             print(f"[{tests_received}/{total_it}] Success from Worker {worker_id}")
         else:
             print(f"[{tests_received}/{total_it}] Failed. Resending...")
@@ -165,8 +238,10 @@ if __name__ == "__main__":
             print()
             print(f"count {i}")
             res = results[i]
-            for k,v in res.items():
-                print(k,v)
+            # print(res.keys())
+            # print(res)
+            for k ,v in res.items():
+                print(k," : ",v)
         print("=======ALL DONE=======")
         exit(0)
     else:

@@ -27,7 +27,7 @@ mpirun --mca btl_openlib_warn_no_device_params_found 0 \
        --bind-to core --map-by core \
        -n 10 \
        python3 giac_with_mpi.py \
-       --case 777 --it 100
+       --case 777 --it 1000
 
 # Звуковий сигнал про завершення ( PhD-бонус )
 # play -n synth 0.5 sin 880
