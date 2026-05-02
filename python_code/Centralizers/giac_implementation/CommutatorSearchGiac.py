@@ -105,8 +105,7 @@ class Derivation:
             current_jac = jac.subs(self.variables, pt)
             evs = current_jac.eigenvalues()
             eigen_vectors = current_jac.eigenvectors()
-            if eigen_vectors.type() != "vecteur":
-                print(eigen_vectors)
+
             entry = {
                 "point": [str(c) for c in pt],
                 "eigenvalues": [str(e) for e in evs],
@@ -421,8 +420,14 @@ class Derivation:
         X, Y = np.meshgrid(x, y)
 
         # 4. Обчислюємо векторне поле на сітці
-        U = f_u(X, Y)
-        V = f_v(X, Y)
+        U_raw = f_u(X, Y)
+        V_raw = f_v(X, Y)
+
+
+        # Перевіряємо, чи є результат масивом.
+        # Якщо повертається скаляр (для константних поліномів), розгортаємо його в масив форми X
+        U = U_raw if isinstance(U_raw, np.ndarray) else np.full_like(X, U_raw)
+        V = V_raw if isinstance(V_raw, np.ndarray) else np.full_like(Y, V_raw)
 
         # 5. Візуалізація
         plt.figure(figsize=(10, 8))
