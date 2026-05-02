@@ -299,11 +299,23 @@ class Derivation:
         # або весь рядок, якщо вам потрібне дуже велике число
         return int(hex_dig[:16], 16)
 
-    def find_commutator(self, max_k) -> tuple:
+    def find_commutator(self, max_k = None) -> tuple:
         """Швидкий пошук через nullspace матриці."""
         current_k = 0
 
         all_solutions = {}
+        if max_k is None:
+            max_deg_var = []
+            for var in self.variables:
+                max_deg = -1
+                for poly in self.polynomials:
+                    deg = poly.degree(var)
+                    if deg > max_deg:
+                        max_deg = deg
+                max_deg_var.append(max_deg)
+            max_k = max(max_deg_var)
+            print(max_k)
+            print(self.polynomials)
         while current_k <= max_k:
 
             # 1. Генеруємо невідомі коефіцієнти
@@ -503,7 +515,7 @@ if __name__ == "__main__":
     # print(f"Commuting derivative: {commuting_derivative}")
     # print(f"Is proportional: {is_proportional}")
     start = time.time()
-    all_solutions,is_proportional = der.find_commutator(12)
+    all_solutions,is_proportional = der.find_commutator()
     end = time.time()
 
 

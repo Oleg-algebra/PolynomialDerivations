@@ -132,7 +132,7 @@ def worker():
 
             start_t = time.time()
             given_der = Derivation([m1, m2], [x, y])
-            all_solutions, is_proportional = given_der.find_commutator(12)
+            all_solutions, is_proportional = given_der.find_commutator()
 
             # Формуємо JSON-сумісний словник
             found_dict = {}
@@ -155,8 +155,8 @@ def worker():
                 "jacobian": [[str(cell) for cell in row] for row in given_der.get_jacobian()],
                 "time": time.time() - start_t
             }
-            given_der.draw_phase_portrait()
-            print(f"Phase portrait for derivation {given_der.hash_polynomialPygen()} is saved.")
+            # given_der.draw_phase_portrait()
+            # print(f"Phase portrait for derivation {given_der.hash_polynomialPygen()} is saved.")
         except Exception as e:
             result_payload = {"status": "error", "message": str(e), "params": params}
             print(result_payload)
@@ -292,8 +292,11 @@ if __name__ == "__main__":
         case, total_tests = args.case, args.it
         print(f"Case: {case}, Total Iterations: {total_tests}")
         # Вкажіть параметри тут прямо
+        start = time.time()
         results = master(total_it=total_tests, case_id=case)
+        end = time.time()
         print(f"Done! Collected {len(results)} tests.")
+        print(f"Total time: {end - start}")
         # for i in range(len(results)):
         #     print()
         #     print(f"count {i}")
