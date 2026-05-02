@@ -314,13 +314,13 @@ class Derivation:
                         max_deg = deg
                 max_deg_var.append(max_deg)
             max_k = max(max_deg_var)
-            print(max_k)
-            print(self.polynomials)
+
         while current_k <= max_k:
 
             # 1. Генеруємо невідомі коефіцієнти
             unknown_der, coeffs = self._generate_unknown_derivation(current_k)
-
+            print(unknown_der.polynomials[0].degree(self.variables))
+            print(unknown_der.polynomials[1].degree(self.variables))
             # 2. Формуємо рівняння [D, Du] = 0
             bracket_lie: Derivation = self @ unknown_der
             equations = []
@@ -337,7 +337,6 @@ class Derivation:
 
             M = syst2mat(equations,coeffs)
             solution = M.ker()
-
 
             for vector in solution:
                 new_polynomials = []
@@ -376,7 +375,13 @@ class Derivation:
 
             current_k += 1
 
-
+        if all_solutions == {}:
+            print("--> empty")
+            all_solutions[self.hash_polynomialPygen()] = {
+                "derivation_solution": self,
+                "is_proportional": True,
+                "is_valid": self.is_solution_valid(self)
+            }
         return all_solutions, True
 
 

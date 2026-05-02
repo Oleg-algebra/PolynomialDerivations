@@ -161,7 +161,8 @@ def worker():
             result_payload = {"status": "error", "message": str(e), "params": params}
             print(result_payload)
             # raise e
-
+        if found_dict == {}:
+            result_payload["status"] = "error"
         # Відправляємо JSON-рядок (це найбезпечніше)
         comm.send(result_payload, dest=0, tag=TAG_RESULT)
 
@@ -254,10 +255,8 @@ def master(total_it, case_id):
 
             print(f"[{tests_received}/{total_it}] Success from Worker {worker_id}")
         else:
-            with open("logs/errors_log.jsonl", "a", encoding="utf-8") as f:
-                # ensure_ascii=False дозволяє бачити кирилицю та змінні як є
-                line = json.dumps(res_data, ensure_ascii=False)
-                f.write(line + "\n")
+            append_to_research_log(res_data,"errors_log.jsonl")
+
             print(res_data)
             print(f"[{tests_received}/{total_it}] Failed. Resending...")
             # Якщо треба — можна тут зменшити tests_received і переслати завдання
