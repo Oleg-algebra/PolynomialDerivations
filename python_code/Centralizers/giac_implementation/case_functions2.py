@@ -7,7 +7,7 @@ def get_parameters(case: int,
                    max_coeff:int,
                    ):
     cases={
-        000: arbitrary,
+        111: arbitrary,
         101: alpha_beta_zero,
         777: nonPropCase,
         888: propCase,
@@ -31,6 +31,7 @@ def arbitrary(min_power, max_power, min_coeff, max_coeff):
     k = np.random.randint(0, max_power + 1)
     n = np.random.randint(0, max_power + 1)
     m = np.random.randint(0, max_power + 1)
+
 
     alpha = np.random.randint(min_coeff, max_coeff)
     beta = np.random.randint(min_coeff, max_coeff)
