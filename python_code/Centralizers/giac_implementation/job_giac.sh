@@ -16,8 +16,9 @@ export MKL_NUM_THREADS=1
 #
 ## 4. Додатковий контроль для Giac (якщо бібліотека їх зчитує)
 export GIAC_NTHREADS=1
+CASE=111
 
-echo "Запуск MPI з обмеженням ресурсів для Case 777..."
+echo "Запуск MPI з обмеженням ресурсів для Case $CASE..."
 
 # 5. Запуск із використанням jemalloc
 # Використовуємо \ для розбиття довгого рядка для читабельності
@@ -27,7 +28,7 @@ mpirun --mca btl_openlib_warn_no_device_params_found 0 \
        --bind-to core --map-by core \
        -n 10 \
        python3 giac_with_mpi.py \
-       --case 777 --it 1000
+       --case $CASE --it 20
 
 # Звуковий сигнал про завершення ( PhD-бонус )
 # play -n synth 0.5 sin 880
