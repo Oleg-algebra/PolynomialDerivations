@@ -104,7 +104,7 @@ def worker():
     # Late import всередині воркера
     with silence_giac():
         from giacpy import giac
-        from CommutatorSearchGiac import Derivation, FastCommutatorFinder
+        from CommutatorSearchGiac import Derivation
         # Ініціалізація ядра
         _ = giac('x')
         giac('nthreads:=1')
@@ -132,8 +132,7 @@ def worker():
 
             start_t = time.time()
             given_der = Derivation([m1, m2], [x, y])
-            finder = FastCommutatorFinder(given_der, max_k=12)
-            all_solutions, is_proportional = finder.find_commutator()
+            all_solutions, is_proportional = given_der.find_commutator(12)
 
             # Формуємо JSON-сумісний словник
             found_dict = {}
@@ -148,15 +147,18 @@ def worker():
             result_payload = {
                 "status": "success",
                 "params": params,
-                "hash" : finder.hash_polynomialPygen(given_der),
+                "hash" : given_der.hash_polynomialPygen(),
                 "GIVEN": given_der.to_sympy(),
                 "RANK": 1 if is_proportional else 2,
                 "FOUND": found_dict,
                 "critical_points_types" : given_der.classify_critical_points(),
+                "jacobian": [[str(cell) for cell in row] for row in given_der.get_jacobian()],
                 "time": time.time() - start_t
             }
         except Exception as e:
             result_payload = {"status": "error", "message": str(e), "params": params}
+            print(result_payload)
+            # raise e
 
         # Відправляємо JSON-рядок (це найбезпечніше)
         comm.send(result_payload, dest=0, tag=TAG_RESULT)
@@ -188,6 +190,7 @@ def master(total_it, case_id):
     while tests_received < total_it:
         print(tests_received)
         status = MPI.Status()
+
         raw_json = comm.recv(source=MPI.ANY_SOURCE, tag=TAG_RESULT, status=status)
         # res_data = json.loads(raw_json)
         res_data = raw_json
@@ -207,6 +210,7 @@ def master(total_it, case_id):
 
             print(f"[{tests_received}/{total_it}] Success from Worker {worker_id}")
         else:
+            print(res_data)
             print(f"[{tests_received}/{total_it}] Failed. Resending...")
             # Якщо треба — можна тут зменшити tests_received і переслати завдання
 
@@ -234,14 +238,14 @@ if __name__ == "__main__":
         # Вкажіть параметри тут прямо
         results = master(total_it=total_tests, case_id=case)
         print(f"Done! Collected {len(results)} tests.")
-        for i in range(len(results)):
-            print()
-            print(f"count {i}")
-            res = results[i]
-            # print(res.keys())
-            # print(res)
-            for k ,v in res.items():
-                print(k," : ",v)
+        # for i in range(len(results)):
+        #     print()
+        #     print(f"count {i}")
+        #     res = results[i]
+        #     # print(res.keys())
+        #     # print(res)
+        #     for k ,v in res.items():
+        #         print(k," : ",v)
         print("=======ALL DONE=======")
         exit(0)
     else:

@@ -99,11 +99,16 @@ class Derivation:
             # Підставляємо точку в Якобіан
             current_jac = jac.subs(self.variables, pt)
             evs = current_jac.eigenvalues()
-
+            eigen_vectors = current_jac.eigenvectors()
+            if eigen_vectors.type() != "vecteur":
+                print(eigen_vectors)
             entry = {
                 "point": [str(c) for c in pt],
                 "eigenvalues": [str(e) for e in evs],
-                "is_continuum": is_symbolic
+                "is_continuum": is_symbolic,
+                "jacobian_at_point" : [[str(cell) for cell in row] for row in current_jac],
+                "eigen_vectors": [[str(cell) for cell in vector] for vector in eigen_vectors]
+                if eigen_vectors.type() == "vecteur" else []
             }
 
             if not is_symbolic:
@@ -230,14 +235,6 @@ class Derivation:
         # Повертаємо новий екземпляр класу з Giac-об'єктами
         return Derivation(polynomials=g_polynomials, variables=g_vars)
 
-
-
-class FastCommutatorFinder:
-    def __init__(self, derivation: Derivation, max_k: int = 5):
-        self.der: Derivation = derivation
-        self.vars: List[Pygen] = derivation.variables
-        self.max_k: int = max_k
-
     def create_poly_simple(self,degree,symbol_coeffs:str):
         # 1. Оголошуємо основні змінні
 
@@ -254,7 +251,7 @@ class FastCommutatorFinder:
                 c_val = giac(c_name)
 
                 # Формуємо доданок: c_k * x^i * y^j
-                term = c_val * (self.vars[0] ** i) * (self.vars[1] ** j)
+                term = c_val * (self.variables[0] ** i) * (self.variables[1] ** j)
 
                 # Додаємо до загального полінома
                 poly += term
@@ -264,6 +261,7 @@ class FastCommutatorFinder:
 
         # .rat() перетворює результат у внутрішню раціональну форму для швидкості
         return poly, coeffs
+
 
     def get_sparsity_info(self,M):
         # Загальна кількість елементів
@@ -283,28 +281,28 @@ class FastCommutatorFinder:
         density = (non_zeros / total_cells) * 100
         return density, non_zeros
 
-    def hash_polynomialPygen(self,derivation: Derivation) -> int:
-        key = "--".join([str(p) for p in derivation.polynomials])
+    def hash_polynomialPygen(self) -> int:
+        key = "--".join([str(p) for p in self.polynomials])
         return hash(key)
 
-    def find_commutator(self) -> tuple:
+    def find_commutator(self, max_k) -> tuple:
         """Швидкий пошук через nullspace матриці."""
         current_k = 0
 
         all_solutions = {}
-        while current_k <= self.max_k:
+        while current_k <= max_k:
 
             # 1. Генеруємо невідомі коефіцієнти
             unknown_der, coeffs = self._generate_unknown_derivation(current_k)
 
             # 2. Формуємо рівняння [D, Du] = 0
-            bracket_lie: Derivation = self.der @ unknown_der
+            bracket_lie: Derivation = self @ unknown_der
             equations = []
             for i in range(len(bracket_lie.polynomials)):
                 equations.extend(
                     bracket_lie.polynomials[i]
                     .normal()
-                    .coeffs(self.vars)
+                    .coeffs(self.variables)
                 )
             # print(equations)
             if not equations:
@@ -317,14 +315,14 @@ class FastCommutatorFinder:
 
             for vector in solution:
                 new_polynomials = []
-                for i in range(len(self.vars)):
-                    m = len(coeffs) // len(self.vars)
+                for i in range(len(self.variables)):
+                    m = len(coeffs) // len(self.variables)
                     old = coeffs[m*i:m*(i + 1)]
                     new = vector[m*i:m*(i + 1)]
                     new_polynomials.append(unknown_der.polynomials[i].subst(old,new).simplify())
 
 
-                potential_solution = Derivation(new_polynomials,self.vars)
+                potential_solution = Derivation(new_polynomials,self.variables)
 
                 if potential_solution.is_zero():
                     continue
@@ -333,19 +331,19 @@ class FastCommutatorFinder:
                     print("Not valid solution")
                     continue
 
-                hash_der = self.hash_polynomialPygen(potential_solution)
+                hash_der = potential_solution.hash_polynomialPygen()
                 if hash_der not in all_solutions:
-                    if not self.check_proportionality(self.der,potential_solution):
+                    if not self.check_proportionality(self,potential_solution):
                         return {hash_der : {
                         "derivation_solution" : potential_solution,
-                        "is_proportional" : self.check_proportionality(self.der, potential_solution),
+                        "is_proportional" : self.check_proportionality(self, potential_solution),
                         "is_valid" : self.is_solution_valid(potential_solution)
                     }
                         }, False
 
                     all_solutions[hash_der] = {
                         "derivation_solution" : potential_solution,
-                        "is_proportional" : self.check_proportionality(self.der, potential_solution),
+                        "is_proportional" : self.check_proportionality(self, potential_solution),
                         "is_valid" : self.is_solution_valid(potential_solution)
                     }
 
@@ -355,32 +353,45 @@ class FastCommutatorFinder:
 
         return all_solutions, True
 
+
     def _generate_unknown_derivation(self, degree):
         """Створює Du з символьними коефіцієнтами."""
         all_coeffs = []
         polys = []
-        for i in range(len(self.vars)):
+        for i in range(len(self.variables)):
             poly, coeffs = self.create_poly_simple(degree,chr(ord('a') + i))
             polys.append(poly)
             all_coeffs += coeffs
-        return Derivation(polys, self.vars), all_coeffs
+        return Derivation(polys, self.variables), all_coeffs
 
-    def is_solution_valid(self, solution: Derivation):
-        lie_bracket = self.der @ solution
+    def is_solution_valid(self, solution: 'Derivation'):
+        lie_bracket = self @ solution
         return lie_bracket.is_zero()
 
 
-    def check_proportionality(self,d1: Derivation, d2: Derivation) -> bool:
+    def check_proportionality(self,d1: 'Derivation', d2: 'Derivation') -> bool:
         """Checks if D1 = f * D2 for some scalar function f."""
         # Cross product of 2D vector fields: P1*Q2 - P2*Q1 == 0
-        for i in range(len(self.vars)):
-            for j in range(i + 1, len(self.vars)):
+        for i in range(len(self.variables)):
+            for j in range(i + 1, len(self.variables)):
                 if i == j:
                     continue
                 cross_prod: Pygen = d1.polynomials[i] * d2.polynomials[j] - d1.polynomials[j] * d2.polynomials[i]
                 if cross_prod.normal() == 0:
                     return True
         return False
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 if __name__ == "__main__":
@@ -394,12 +405,12 @@ if __name__ == "__main__":
     dct = {"--".join([str(p) for p in der.polynomials]) : der}
     print(dct)
     print(f"Given derivative: {der}")
-    commut_search = FastCommutatorFinder(der,K)
+
     # commuting_derivative, is_proportional = commut_search.find_commutator()
     # print(f"Commuting derivative: {commuting_derivative}")
     # print(f"Is proportional: {is_proportional}")
     start = time.time()
-    all_solutions,is_proportional = commut_search.find_commutator()
+    all_solutions,is_proportional = der.find_commutator(12)
     end = time.time()
 
 
