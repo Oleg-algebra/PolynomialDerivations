@@ -4,6 +4,11 @@ from typing import List, Any
 from dataclasses import dataclass
 from giacpy import giac,  syst2mat, solve, matrix
 from giacpy.giacpy import Pygen
+import numpy as np
+import matplotlib.pyplot as plt
+from sympy import lambdify
+import os
+import hashlib
 
 
 @dataclass
@@ -282,8 +287,18 @@ class Derivation:
         return density, non_zeros
 
     def hash_polynomialPygen(self) -> int:
-        key = "--".join([str(p) for p in self.polynomials])
-        return hash(key)
+        # 1. Формуємо стабільний рядок (використовуємо .normal() для Giac-об'єктів)
+        # Важливо, щоб порядок поліномів у списку був завжди однаковим
+        key = "--".join([str(p.normal()) for p in self.polynomials])
+
+        # 2. Використовуємо hashlib для отримання детермінованого хешу
+        # sha256 повертає 64-символьний хеш, який завжди однаковий для однакового рядка
+        hash_object = hashlib.sha256(key.encode('utf-8'))
+        hex_dig = hash_object.hexdigest()
+
+        # 3. Конвертуємо частину hex-рядка в int (наприклад, 16 символів для 64-бітного int)
+        # або весь рядок, якщо вам потрібне дуже велике число
+        return int(hex_dig[:16], 16)
 
     def find_commutator(self, max_k) -> tuple:
         """Швидкий пошук через nullspace матриці."""
@@ -380,6 +395,79 @@ class Derivation:
                 if cross_prod.normal() == 0:
                     return True
         return False
+
+
+
+    def draw_phase_portrait(self, x_range=(-5, 5),
+                            y_range=(-5, 5),
+                            density=1.5,
+                            directory: str = "phase_portraits/"):
+        """
+        Малює фазовий портрет системи (P1, P2) та зберігає його як PNG.
+        """
+        # 1. Отримуємо SymPy-версію деривації для швидких числових обчислень
+        s_der = self.to_sympy()
+        vars_sympy = s_der.variables
+        poly_sympy = [p.as_expr() for p in s_der.polynomials]
+
+        # 2. Створюємо lambdify-функції для компонент вектора (u, v)
+        # Це перетворює символи у швидкі операції з масивами numpy
+        f_u = lambdify(vars_sympy, poly_sympy[0], 'numpy')
+        f_v = lambdify(vars_sympy, poly_sympy[1], 'numpy')
+
+        # 3. Готуємо сітку координат
+        x = np.linspace(x_range[0], x_range[1], 100)
+        y = np.linspace(y_range[0], y_range[1], 100)
+        X, Y = np.meshgrid(x, y)
+
+        # 4. Обчислюємо векторне поле на сітці
+        U = f_u(X, Y)
+        V = f_v(X, Y)
+
+        # 5. Візуалізація
+        plt.figure(figsize=(10, 8))
+
+        # Малюємо лінії току
+        # color: швидкість потоку (magnitude) для кращого сприйняття
+        speed = np.sqrt(U ** 2 + V ** 2)
+        strm = plt.streamplot(X, Y, U, V, color=speed, linewidth=1, cmap='autumn',
+                              density=density, arrowstyle='->', arrowsize=1.5)
+
+        plt.colorbar(strm.lines, label='Швидкість потоку')
+
+        # 6. Додаємо критичні точки, якщо вони вже обчислені
+        try:
+            points = self.find_critical_points()
+            for pt in points:
+                if not any(not coord.is_number() for coord in pt):
+                    px, py = float(pt[0]), float(pt[1])
+                    plt.plot(px, py, 'go', markersize=8, label='Критична точка' if px == pt[0] else "")
+        except:
+            pass  # Якщо точок немає або вони символьні — ігноруємо
+
+        hash = self.hash_polynomialPygen()
+        # Оформлення
+        plt.title(f"Phase Portrait (Hash: {hash})")
+        plt.xlabel(str(self.variables[0]))
+        plt.ylabel(str(self.variables[1]))
+        plt.grid(alpha=0.3)
+        plt.axhline(0, color='black', lw=1)
+        plt.axvline(0, color='black', lw=1)
+
+
+
+
+
+        if os.path.exists(directory) and os.path.isdir(directory):
+            print("Директорія на місці.")
+        else:
+            os.makedirs(directory, exist_ok=True)
+
+        # 7. Збереження
+        filename = f"{directory+str(hash)}.png"
+        plt.savefig(filename, dpi=150)
+        plt.close()  # Закриваємо фігуру, щоб не переповнювати RAM
+        return filename
 
 
 
