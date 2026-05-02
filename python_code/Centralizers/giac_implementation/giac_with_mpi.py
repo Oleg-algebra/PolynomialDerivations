@@ -51,7 +51,7 @@ def serialize_research_data(obj: Any) -> Any:
     return obj
 
 
-def append_to_research_log(result: dict, filename: str = "results_log.jsonl"):
+def append_to_research_log(result: dict, filename: str = "results_log.jsonl",directory: str = "logs/"):
     """
     Додає один результат обчислення в файл.
     """
@@ -62,7 +62,12 @@ def append_to_research_log(result: dict, filename: str = "results_log.jsonl"):
         "data": serialize_research_data(result)
     }
 
-    with open(filename, "a", encoding="utf-8") as f:
+    if os.path.exists(directory) and os.path.isdir(directory):
+        print("Директорія на місці.")
+    else:
+        os.makedirs(directory, exist_ok=True)
+
+    with open(directory+filename, "a", encoding="utf-8") as f:
         # ensure_ascii=False дозволяє бачити кирилицю та змінні як є
         line = json.dumps(payload, ensure_ascii=False)
         f.write(line + "\n")
@@ -94,11 +99,6 @@ TAG_RESULT = 2
 TAG_STOP = 3
 
 
-def get_complexity(giac_obj):
-    """Повертає кількість вузлів у дереві Giac-об'єкта"""
-    from giacpy import giac
-    # Ми використовуємо int(), бо giac() повертає об'єкт типу gen
-    return int(giac(f"size({giac_obj})"))
 
 def worker():
     # Late import всередині воркера
@@ -155,6 +155,8 @@ def worker():
                 "jacobian": [[str(cell) for cell in row] for row in given_der.get_jacobian()],
                 "time": time.time() - start_t
             }
+            given_der.draw_phase_portrait()
+            print(f"Phase portrait for derivation {given_der.hash_polynomialPygen()} is saved.")
         except Exception as e:
             result_payload = {"status": "error", "message": str(e), "params": params}
             print(result_payload)
@@ -170,6 +172,48 @@ def worker():
 
 def master(total_it, case_id):
     from case_functions2 import get_parameters
+
+    with silence_giac():
+        from giacpy import giac
+        from CommutatorSearchGiac import Derivation
+        # Ініціалізація ядра
+        _ = giac('x')
+        giac('nthreads:=1')
+        giac('print_time:=0')
+        giac('timeout:=40')
+        # У воркері після giac('x')
+        giac('debug_infolevel:=0')
+        giac('threads_allowed:=0')
+
+    def is_already_computed(params, existing_hashes):
+        """
+        Перевіряє, чи була деривація з такими параметрами вже обчислена.
+
+        params: кортеж (l, k, n, m, alpha, beta)
+        existing_hashes: set() із хешами, зчитаними з вашого JSONL файлу
+        """
+        l, k, n, m, alpha, beta = params
+        x, y = giac('x, y')
+
+        # 1. Створюємо мономи точно за вашою формулою
+        # Використовуємо .normal() для стабілізації представлення в Giac
+        m1 = (giac(alpha) * x ** k * y ** n).normal()
+        m2 = (giac(beta) * x ** l * y ** m).normal()
+
+        # 2. Створюємо об'єкт деривації
+        # Примітка: Об'єкт Derivation повинен мати метод hash_polynomialPygen
+        # який використовує hashlib.sha256
+        temp_der = Derivation([m1, m2], [x, y])
+
+        # 3. Отримуємо стабільний хеш
+        current_hash = temp_der.hash_polynomialPygen()
+
+        # 4. Перевірка наявності
+        if current_hash in existing_hashes:
+            return True, current_hash
+
+        return False, current_hash
+
     limit_cfg = {"min_power": 0, "max_power": 10, "min_coeff": -20, "max_coeff": 20}
 
     final_results = []
@@ -210,19 +254,31 @@ def master(total_it, case_id):
 
             print(f"[{tests_received}/{total_it}] Success from Worker {worker_id}")
         else:
+            with open("logs/errors_log.jsonl", "a", encoding="utf-8") as f:
+                # ensure_ascii=False дозволяє бачити кирилицю та змінні як є
+                line = json.dumps(res_data, ensure_ascii=False)
+                f.write(line + "\n")
             print(res_data)
             print(f"[{tests_received}/{total_it}] Failed. Resending...")
             # Якщо треба — можна тут зменшити tests_received і переслати завдання
 
         # Відправляємо нове завдання або стоп-сигнал
         if tests_sent < total_it:
-            params = get_parameters(case_id, **limit_cfg)
+            while True:
+                params = get_parameters(case_id, **limit_cfg)
+                is_already_exists, h = is_already_computed(params, processed_hashes)
+
+                if not is_already_exists:
+                    print("FOUND A NEW SET OF PARAMETERS")
+                    break
+                print("ALREADY EXISTS")
             comm.send(params, dest=worker_id, tag=TAG_JOB)
             tests_sent += 1
         else:
             comm.send(None, dest=worker_id, tag=TAG_STOP)
 
     return final_results
+
 
 
 if __name__ == "__main__":
