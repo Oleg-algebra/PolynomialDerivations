@@ -1,3 +1,5 @@
+import os.path
+
 import numpy as np
 import matplotlib.pyplot as plt
 import sympy as sp
@@ -154,7 +156,11 @@ def generate_phase_portrait():
 
         print(" Графік згенеровано успішно.")
         plt.tight_layout()
-        plt.savefig(f"{p_str}dx+{q_str}dy.png", dpi=300)
+
+        if not os.path.exists("./plots"):
+            os.makedirs("./plots")
+
+        plt.savefig(f"./plots/{p_str}dx+{q_str}dy.png", dpi=300)
         plt.show()
         # plt.savefig(f"{p_str}dx+{q_str}dy.png", dpi=300)
 
