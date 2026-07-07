@@ -125,6 +125,7 @@ def worker():
         try:
             l, k, n, m, alpha, beta = params
             x, y = giac('x, y')
+            print(f"[PARAMETERS]: {l, k, n, m, alpha, beta}")
 
             # Обчислення
             m1 = giac(alpha) * x ** k * y ** n
@@ -141,7 +142,8 @@ def worker():
                 found_dict[str(s_id)] = {
                     "is_valid": bool(sol["is_valid"]),
                     "is_proportional": bool(sol["is_proportional"]),
-                    "commuting_derivative": der_obj.to_sympy()
+                    "commuting_derivative": der_obj.to_sympy(),
+                    "system_dim" : sol["system_dim"]
                 }
 
             result_payload = {
@@ -215,7 +217,11 @@ def master(total_it, case_id):
 
         return False, current_hash
 
-    limit_cfg = {"min_power": 0, "max_power": 10, "min_coeff": -20, "max_coeff": 20}
+    coeff_majorant = 20
+    limit_cfg = {"min_power": 0,
+                 "max_power": 10,
+                 "min_coeff": -coeff_majorant,
+                 "max_coeff": coeff_majorant}
 
     final_results = []
     tests_sent = 0
@@ -248,6 +254,7 @@ def master(total_it, case_id):
 
             if current_hash in processed_hashes:
                 print(f"[!] Дублікат пропущено: {current_hash}")
+                raise RuntimeError("[DUPLICATE!!!]")
             else:
                 append_to_research_log(res_data)
                 processed_hashes.add(current_hash)

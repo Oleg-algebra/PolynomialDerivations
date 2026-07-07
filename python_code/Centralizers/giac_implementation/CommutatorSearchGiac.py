@@ -189,10 +189,6 @@ class Derivation:
 
         return len(points)
 
-    def __matmul__(self, other):
-        """Дозволяє запис D3 = D1 @ D2 для комутатора."""
-        return self.bracket(other)
-
     def to_sympy(self) -> 'Derivation':
         """
         Конвертує поточну деривацію з Giac у SymPy.Poly для передачі через MPI/Pool.
@@ -299,28 +295,33 @@ class Derivation:
         # або весь рядок, якщо вам потрібне дуже велике число
         return int(hex_dig[:16], 16)
 
+    def get_polynomial_degree(self,polynomial: Pygen | Poly,variables: list[Pygen]) -> int:
+        poly_str = str(polynomial)
+        poly_symb = sympify(poly_str)
+        symb_vars = symbols([str(v) for v in variables])
+        sympy_polynomial = Poly(poly_symb,symb_vars)
+
+        return sympy_polynomial.total_degree()
+
+
     def find_commutator(self, max_k = None) -> tuple:
         """Швидкий пошук через nullspace матриці."""
         current_k = 0
 
         all_solutions = {}
+
         if max_k is None:
             max_deg_var = []
-            for var in self.variables:
-                max_deg = -1
-                for poly in self.polynomials:
-                    deg = poly.degree(var)
-                    if deg > max_deg:
-                        max_deg = deg
-                max_deg_var.append(max_deg)
+            for poly in self.polynomials:
+                max_deg_var.append(
+                    self.get_polynomial_degree(poly,self.variables)
+                )
             max_k = max(max_deg_var)
 
         while current_k <= max_k:
 
             # 1. Генеруємо невідомі коефіцієнти
             unknown_der, coeffs = self._generate_unknown_derivation(current_k)
-            print(unknown_der.polynomials[0].degree(self.variables))
-            print(unknown_der.polynomials[1].degree(self.variables))
             # 2. Формуємо рівняння [D, Du] = 0
             bracket_lie: Derivation = self @ unknown_der
             equations = []
@@ -336,6 +337,7 @@ class Derivation:
                 continue
 
             M = syst2mat(equations,coeffs)
+            # print(f"[SYSTEM DIMENSION]: {M.dim()}")
             solution = M.ker()
 
             for vector in solution:
@@ -350,6 +352,7 @@ class Derivation:
                 potential_solution = Derivation(new_polynomials,self.variables)
 
                 if potential_solution.is_zero():
+                    # print(f"[ZERO SOLUTION]: Derivation: {self} --- k = {current_k} --- max_K = {max_k}")
                     continue
 
                 if not self.is_solution_valid(potential_solution):
@@ -357,30 +360,30 @@ class Derivation:
                     continue
 
                 hash_der = potential_solution.hash_polynomialPygen()
+                log_result = {
+                        "derivation_solution" : potential_solution,
+                        "is_proportional" : self.check_proportionality(self, potential_solution),
+                        "is_valid" : self.is_solution_valid(potential_solution),
+                        "system_dim" : [int(d) for d in M.dim()]
+                    }
                 if hash_der not in all_solutions:
                     if not self.check_proportionality(self,potential_solution):
-                        return {hash_der : {
-                        "derivation_solution" : potential_solution,
-                        "is_proportional" : self.check_proportionality(self, potential_solution),
-                        "is_valid" : self.is_solution_valid(potential_solution)
-                    }
+                        return {hash_der : log_result
                         }, False
 
-                    all_solutions[hash_der] = {
-                        "derivation_solution" : potential_solution,
-                        "is_proportional" : self.check_proportionality(self, potential_solution),
-                        "is_valid" : self.is_solution_valid(potential_solution)
-                    }
+                    all_solutions[hash_der] = log_result
 
 
             current_k += 1
 
         if all_solutions == {}:
-            print("--> empty")
+            print(f"--> empty {self}")
+            # raise RuntimeError("[ONLY ZERO SOLUTIONS!!!]")
             all_solutions[self.hash_polynomialPygen()] = {
                 "derivation_solution": self,
                 "is_proportional": True,
-                "is_valid": self.is_solution_valid(self)
+                "is_valid": self.is_solution_valid(self),
+                "system_dim": []
             }
         return all_solutions, True
 
@@ -417,7 +420,7 @@ class Derivation:
     def draw_phase_portrait(self, x_range=(-5, 5),
                             y_range=(-5, 5),
                             density=1.5,
-                            directory: str = "phase_portraits/"):
+                            directory: str = "phase_portraits/") -> str:
         """
         Малює фазовий портрет системи (P1, P2) та зберігає його як PNG.
         """
@@ -492,7 +495,9 @@ class Derivation:
         return filename
 
 
-
+    def __matmul__(self, other):
+        """Дозволяє запис D3 = D1 @ D2 для комутатора."""
+        return self.bracket(other)
 
 
 
@@ -505,10 +510,13 @@ class Derivation:
 
 
 if __name__ == "__main__":
-    x, y = giac('x, y')
-    f_x:Pygen = y**2
-    f_y = x**2
+    l, k, n, m, alpha, beta = (8, 9, 5, 8, 1, 1)
+    # l, k, n, m, alpha, beta = (2, 1, 2, 0, 6, -8)
 
+
+    x, y = giac('x, y')
+    f_x:Pygen = alpha*x**k*y**n
+    f_y = beta*x**l*y**m
     K = 10
     der = Derivation([f_x, f_y], [x, y])
 
@@ -520,7 +528,7 @@ if __name__ == "__main__":
     # print(f"Commuting derivative: {commuting_derivative}")
     # print(f"Is proportional: {is_proportional}")
     start = time.time()
-    all_solutions,is_proportional = der.find_commutator()
+    all_solutions,is_proportional = der.find_commutator(max_k= None)
     end = time.time()
 
 

@@ -27,9 +27,8 @@ mpirun --mca btl_openlib_warn_no_device_params_found 0 \
        --mca btl ^openib \
        --bind-to core --map-by core \
        -n 10 \
-       python3 giac_with_mpi.py \
-       --case $CASE --it 20
+       /media/olegt/MyData/University/Phd-Math/Disertation/PolynomialDerivations/.venv/bin/python3 giac_with_mpi.py \
+       --case $CASE --it 10
 
 # Звуковий сигнал про завершення ( PhD-бонус )
 # play -n synth 0.5 sin 880
-#
