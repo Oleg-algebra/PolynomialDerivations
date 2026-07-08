@@ -281,10 +281,10 @@ class Derivation:
         density = (non_zeros / total_cells) * 100
         return density, non_zeros
 
-    def hash_polynomialPygen(self) -> int:
+    def hash_polynomialPygen(self, polynomials: list[Pygen | Poly]) -> int:
         # 1. Формуємо стабільний рядок (використовуємо .normal() для Giac-об'єктів)
         # Важливо, щоб порядок поліномів у списку був завжди однаковим
-        key = "--".join([str(p.normal()) for p in self.polynomials])
+        key = "--".join([str(p.normal()) for p in polynomials])
 
         # 2. Використовуємо hashlib для отримання детермінованого хешу
         # sha256 повертає 64-символьний хеш, який завжди однаковий для однакового рядка
@@ -359,7 +359,7 @@ class Derivation:
                     print("Not valid solution")
                     continue
 
-                hash_der = potential_solution.hash_polynomialPygen()
+                hash_der = potential_solution.hash_polynomialPygen(potential_solution.polynomials)
                 log_result = {
                         "derivation_solution" : potential_solution,
                         "is_proportional" : self.check_proportionality(self, potential_solution),
@@ -379,7 +379,7 @@ class Derivation:
         if all_solutions == {}:
             print(f"--> empty {self}")
             # raise RuntimeError("[ONLY ZERO SOLUTIONS!!!]")
-            all_solutions[self.hash_polynomialPygen()] = {
+            all_solutions[self.hash_polynomialPygen(self.polynomials)] = {
                 "derivation_solution": self,
                 "is_proportional": True,
                 "is_valid": self.is_solution_valid(self),
@@ -415,7 +415,85 @@ class Derivation:
                     return True
         return False
 
+    def find_first_integral(self,
+                            min_degree: int = 0,
+                            max_degree: int = None,
+                            is_truncated_search = False) -> dict:
+        """
+        Основний метод пошуку перших інтегралів (констант) диференціювання.
+        Перебирає загальний степінь полінома від min_degree до max_degree.
+        Повертає словник зі списком знайдених нетривіальних інтегралів.
+        """
+        current_deg = min_degree
 
+        # Якщо max_degree не вказано, беремо максимум зі степенів компонент деривації
+        if max_degree is None:
+            max_deg_var = [self.get_polynomial_degree(poly, self.variables) for poly in self.polynomials]
+            max_degree = max(max_deg_var) + 1
+
+        first_integrals = []
+
+        while current_deg <= max_degree:
+            # 1. Генеруємо невідомий поліном f та його символьні коефіцієнти
+            unknown_poly, coeffs = self.create_poly_simple(current_deg, "c")
+
+            # 2. Обчислюємо дію деривації: D(f)
+            df_expr = self.apply(unknown_poly)
+
+            # 3. Виділяємо рівняння (коефіцієнти прирівнюємо до 0)
+            equations = df_expr.normal().coeffs(self.variables)
+
+            if not equations:
+                current_deg += 1
+                continue
+
+            # 4. Формуємо матрицю системи та знаходимо її ядро (nullspace) через Giac
+            M = syst2mat(equations, coeffs)
+            solution_basis = M.ker()
+
+            # 5. Аналізуємо знайдені вектори-розв'язки
+            results = {}
+            for vector in solution_basis:
+                # Підставляємо знайдені числові значення замість символьних коефіцієнтів
+                found_poly = unknown_poly.subst(coeffs, vector[:-1]).simplify()
+
+                if not self._validate_first_integral(found_poly):
+                    print(f"[INVALID FIRST INTEGRAL]: {found_poly}")
+                    continue
+
+                # Перевіряємо, чи є знайдений поліном нетривіальним
+                if self._is_nontrivial_integral(found_poly) and self.hash_polynomialPygen([found_poly]) not in results:
+                    results[self.hash_polynomialPygen([found_poly])] = found_poly
+
+
+            # Якщо знайшли нетривіальні інтеграли на поточному кроці степеня — зупиняємо пошук
+            if is_truncated_search and first_integrals:
+                break
+
+            current_deg += 1
+
+        return {"first_integrals": results}
+
+    def _is_poly_zero(self, poly: Pygen):
+        return poly.normal() == 0
+
+    def _validate_first_integral(self,poly: Pygen):
+        res = self.apply(poly)
+        return self._is_poly_zero(res)
+
+    def _is_nontrivial_integral(self, poly: Pygen) -> bool:
+        """
+        Перевіряє, чи є знайдений інтеграл нетривіальним.
+        Поліном тривіальний, якщо він тотожно рівний 0 або є чистою константою.
+        """
+        if self._is_poly_zero(poly):
+            return False
+
+        # Якщо степінь відносно всіх змінних системи дорівнює 0 — це константа C
+        if self.get_polynomial_degree(poly, self.variables) == 0:
+            return False
+
+        return True
 
     def draw_phase_portrait(self, x_range=(-5, 5),
                             y_range=(-5, 5),
@@ -470,7 +548,7 @@ class Derivation:
         except:
             pass  # Якщо точок немає або вони символьні — ігноруємо
 
-        hash = self.hash_polynomialPygen()
+        hash = self.hash_polynomialPygen(self.polynomials)
         # Оформлення
         plt.title(f"Phase Portrait (Hash: {hash})")
         plt.xlabel(str(self.variables[0]))
@@ -512,7 +590,7 @@ class Derivation:
 if __name__ == "__main__":
     l, k, n, m, alpha, beta = (8, 9, 5, 8, 1, 1)
     # l, k, n, m, alpha, beta = (2, 1, 2, 0, 6, -8)
-
+    l, k, n, m, alpha, beta = (2, 0, 2, 0, 1, 1)
 
     x, y = giac('x, y')
     f_x:Pygen = alpha*x**k*y**n
@@ -535,6 +613,12 @@ if __name__ == "__main__":
     for hash, solution in all_solutions.items():
         print(hash)
         print(solution)
+
+    first_integral_results = der.find_first_integral(max_degree=10,is_truncated_search=False)
+
+    for idx,integral in enumerate(first_integral_results["first_integrals"].items()):
+        print(f"[INTEGRAL # {idx}]: Hash: {integral[0]} --- Expression: {integral[1]}")
+
 
     print(f"execution time: {end - start}")
 

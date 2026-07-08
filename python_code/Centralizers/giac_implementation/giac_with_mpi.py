@@ -149,7 +149,7 @@ def worker():
             result_payload = {
                 "status": "success",
                 "params": params,
-                "hash" : given_der.hash_polynomialPygen(),
+                "hash" : given_der.hash_polynomialPygen(given_der.polynomials),
                 "GIVEN": given_der.to_sympy(),
                 "RANK": 1 if is_proportional else 2,
                 "FOUND": found_dict,
@@ -209,7 +209,7 @@ def master(total_it, case_id):
         temp_der = Derivation([m1, m2], [x, y])
 
         # 3. Отримуємо стабільний хеш
-        current_hash = temp_der.hash_polynomialPygen()
+        current_hash = temp_der.hash_polynomialPygen(temp_der.polynomials)
 
         # 4. Перевірка наявності
         if current_hash in existing_hashes:
