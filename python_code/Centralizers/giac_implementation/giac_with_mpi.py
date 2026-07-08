@@ -135,6 +135,20 @@ def worker():
             given_der = Derivation([m1, m2], [x, y])
             all_solutions, is_proportional = given_der.find_commutator()
 
+            first_integral_max_degree = max(n + k, l + m)
+
+            fisrt_integrals = given_der.find_first_integral(
+                max_degree=first_integral_max_degree,
+                is_truncated_search=True)
+
+            results_dict = fisrt_integrals["first_integrals"]
+            print(f"BEFORE SYMPY CAST: {results_dict}")
+            results_dict_sympy = {}
+
+            for hash, integral in results_dict.items():
+                results_dict_sympy[hash] = given_der.polynomial_to_sympy(integral,given_der.variables)
+
+            print(f"AFTER SYMPY CAST: {results_dict_sympy}")
             # Формуємо JSON-сумісний словник
             found_dict = {}
             for s_id, sol in all_solutions.items():
@@ -144,6 +158,7 @@ def worker():
                     "is_proportional": bool(sol["is_proportional"]),
                     "commuting_derivative": der_obj.to_sympy(),
                     "system_dim" : sol["system_dim"]
+
                 }
 
             result_payload = {
@@ -152,9 +167,10 @@ def worker():
                 "hash" : given_der.hash_polynomialPygen(given_der.polynomials),
                 "GIVEN": given_der.to_sympy(),
                 "RANK": 1 if is_proportional else 2,
-                "FOUND": found_dict,
+                "ANALYZE_LOG_RESULT": found_dict,
                 "critical_points_types" : given_der.classify_critical_points(),
                 "jacobian": [[str(cell) for cell in row] for row in given_der.get_jacobian()],
+                "first_integrals": results_dict_sympy,
                 "time": time.time() - start_t
             }
             # given_der.draw_phase_portrait()

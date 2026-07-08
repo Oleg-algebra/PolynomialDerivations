@@ -1,5 +1,7 @@
 import time
-from sympy import sympify, Poly, symbols
+from math import inf
+
+from sympy import sympify, Poly, symbols, Symbol
 from typing import List, Any
 from dataclasses import dataclass
 from giacpy import giac,  syst2mat, solve, matrix
@@ -34,7 +36,7 @@ class Derivation:
     def is_zero(self) -> bool:
         return all(p.normal() == 0 for p in self.polynomials)
 
-    def bracket(self, other):
+    def bracket(self, other) -> 'Derivation':
         """
         Обчислює дужку Лі [self, other].
         Формула для компонент: c_k = self(other.polynomials[k]) - other(self.polynomials[k])
@@ -162,7 +164,7 @@ class Derivation:
 
         return classification
 
-    def count_critical_points(self):
+    def count_critical_points(self) -> int:
         """
         Повертає кількість точок або float('inf'), якщо розв'язків нескінченно.
         """
@@ -235,7 +237,25 @@ class Derivation:
         # Повертаємо новий екземпляр класу з Giac-об'єктами
         return Derivation(polynomials=g_polynomials, variables=g_vars)
 
-    def create_poly_simple(self,degree,symbol_coeffs:str):
+    def polynomial_to_sympy(self,polynomial: Pygen, variables: List[Pygen | Any]) -> Poly:
+        s_vars = symbols([str(v) for v in variables])
+        p_str = str(polynomial.normal())
+        s_expr = sympify(p_str)
+
+        # 2. Створюємо SymPy Poly. Це важливо для збереження методів .LT(), .coeffs() тощо.
+        return Poly(s_expr, *s_vars)
+
+    def polynomial_from_sympy(self, polynomial: Poly) -> Pygen:
+
+        # 2. Перетворюємо SymPy Poly назад у вираз, а потім у рядок
+        # p.as_expr() видаляє специфічну обгортку Poly, залишаючи чистий поліном
+        p_str = str(polynomial.as_expr())
+
+        # 3. Створюємо об'єкт Giac.
+        # Метод .normal() гарантує, що Giac правильно розпарсить і спростить вираз
+        return giac(p_str).normal()
+
+    def create_poly_simple(self,degree,symbol_coeffs:str) -> tuple[Pygen,List[Pygen]]:
         # 1. Оголошуємо основні змінні
 
         poly: Pygen = 0
@@ -263,7 +283,7 @@ class Derivation:
         return poly, coeffs
 
 
-    def get_sparsity_info(self,M):
+    def get_sparsity_info(self,M) -> tuple:
         # Загальна кількість елементів
         rows = M.nrows()
         cols = M.ncols()
@@ -388,7 +408,7 @@ class Derivation:
         return all_solutions, True
 
 
-    def _generate_unknown_derivation(self, degree):
+    def _generate_unknown_derivation(self, degree) -> tuple['Derivation',list[Pygen]]:
         """Створює Du з символьними коефіцієнтами."""
         all_coeffs = []
         polys = []
@@ -417,7 +437,7 @@ class Derivation:
 
     def find_first_integral(self,
                             min_degree: int = 0,
-                            max_degree: int = None,
+                            max_degree: int | None | float = inf,
                             is_truncated_search = False) -> dict:
         """
         Основний метод пошуку перших інтегралів (констант) диференціювання.
@@ -427,13 +447,16 @@ class Derivation:
         current_deg = min_degree
 
         # Якщо max_degree не вказано, беремо максимум зі степенів компонент деривації
-        if max_degree is None:
+        if  max_degree is None :
             max_deg_var = [self.get_polynomial_degree(poly, self.variables) for poly in self.polynomials]
             max_degree = max(max_deg_var) + 1
 
-        first_integrals = []
 
+        is_trivial_found = False
+        is_non_trivial_found = False
+        results = {}
         while current_deg <= max_degree:
+            print(f"[Poly DEGREE]: {current_deg}")
             # 1. Генеруємо невідомий поліном f та його символьні коефіцієнти
             unknown_poly, coeffs = self.create_poly_simple(current_deg, "c")
 
@@ -452,25 +475,46 @@ class Derivation:
             solution_basis = M.ker()
 
             # 5. Аналізуємо знайдені вектори-розв'язки
-            results = {}
+
             for vector in solution_basis:
                 # Підставляємо знайдені числові значення замість символьних коефіцієнтів
                 found_poly = unknown_poly.subst(coeffs, vector[:-1]).simplify()
 
                 if not self._validate_first_integral(found_poly):
-                    print(f"[INVALID FIRST INTEGRAL]: {found_poly}")
-                    continue
+                    print(f"[INVALID FIRST INTEGRAL]: {self} ---> {found_poly}")
+                    raise RuntimeError(f"[INVALID FIRST INTEGRAL]: Derivation: {self}")
 
                 # Перевіряємо, чи є знайдений поліном нетривіальним
-                if self._is_nontrivial_integral(found_poly) and self.hash_polynomialPygen([found_poly]) not in results:
-                    results[self.hash_polynomialPygen([found_poly])] = found_poly
+                # self._is_nontrivial_integral(found_poly) and
+
+                if not  self._is_nontrivial_integral(found_poly):
+                    if not is_trivial_found:
+                        # print(f"[FOUND TRIVIAL FIRST INTEGRAL]: {found_poly}")
+                        results[self.hash_polynomialPygen([found_poly])] = found_poly
+                        is_trivial_found = True
+                        # print(f"ADDED TRIVIAL --> {self} --> Results: {results}")
+                else:
+                    hash_poly = self.hash_polynomialPygen([found_poly])
+                    if  hash_poly not in results:
+                        # print(f"[FOUND NON TRIVIAL FIRST INTEGRAL]: {self}: {found_poly}")
+                        results[hash_poly] = found_poly
+                        is_non_trivial_found = True
 
 
             # Якщо знайшли нетривіальні інтеграли на поточному кроці степеня — зупиняємо пошук
-            if is_truncated_search and first_integrals:
+            if is_truncated_search and is_non_trivial_found:
+                print("[TRUNCATING SEARCH]")
                 break
 
             current_deg += 1
+
+        else:
+            print("WENT THROUGH ALL DEGREES")
+
+        # if results == {}:
+        #     print(f"---->NO FIRST INTEGRALS: {self}")
+        # else:
+        #     print(f"---->FOUND SOMETHING: {self}")
 
         return {"first_integrals": results}
 
@@ -488,7 +532,6 @@ class Derivation:
         """
         if self._is_poly_zero(poly):
             return False
-
         # Якщо степінь відносно всіх змінних системи дорівнює 0 — це константа C
         if self.get_polynomial_degree(poly, self.variables) == 0:
             return False
@@ -591,6 +634,7 @@ if __name__ == "__main__":
     l, k, n, m, alpha, beta = (8, 9, 5, 8, 1, 1)
     # l, k, n, m, alpha, beta = (2, 1, 2, 0, 6, -8)
     l, k, n, m, alpha, beta = (2, 0, 2, 0, 1, 1)
+    l, k, n, m, alpha, beta = [5, 6, 4, 0, -9, 5]
 
     x, y = giac('x, y')
     f_x:Pygen = alpha*x**k*y**n
@@ -614,10 +658,12 @@ if __name__ == "__main__":
         print(hash)
         print(solution)
 
-    first_integral_results = der.find_first_integral(max_degree=10,is_truncated_search=False)
+    first_integral_results = der.find_first_integral(max_degree=inf,is_truncated_search=True)
 
     for idx,integral in enumerate(first_integral_results["first_integrals"].items()):
         print(f"[INTEGRAL # {idx}]: Hash: {integral[0]} --- Expression: {integral[1]}")
+    else:
+        print(f"NO FIRST INTEGRALS")
 
 
     print(f"execution time: {end - start}")
