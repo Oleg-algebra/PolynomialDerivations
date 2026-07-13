@@ -379,13 +379,13 @@ class Derivation:
 
                 if not self.is_solution_valid(potential_solution):
                     print("Not valid solution")
+                    raise RuntimeError("[!!!][INVALID SOLUTION]")
                     continue
 
                 hash_der = potential_solution.hash_polynomialPygen(potential_solution.polynomials)
                 log_result = {
                         "derivation_solution" : potential_solution,
                         "is_proportional" : self.check_proportionality(self, potential_solution),
-                        "is_valid" : self.is_solution_valid(potential_solution),
                         "system_dim" : [int(d) for d in M.dim()]
                     }
                 if hash_der not in all_solutions:
@@ -404,7 +404,6 @@ class Derivation:
             all_solutions[self.hash_polynomialPygen(self.polynomials)] = {
                 "derivation_solution": self,
                 "is_proportional": True,
-                "is_valid": self.is_solution_valid(self),
                 "system_dim": []
             }
         return all_solutions, True

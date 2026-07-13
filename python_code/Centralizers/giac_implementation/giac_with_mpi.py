@@ -57,8 +57,8 @@ def append_to_research_log(result: dict, filename: str = "results_log.jsonl",dir
     """
     # Збагачуємо дані метаінформацією
     payload = {
-        "id": str(uuid.uuid4())[:8],
-        "timestamp": datetime.datetime.now().isoformat(),
+        # "id": str(uuid.uuid4())[:8],
+        # "timestamp": datetime.datetime.now().isoformat(),
         "data": serialize_research_data(result)
     }
 
@@ -129,34 +129,35 @@ def worker():
             given_der = given_der_sympy.from_sympy()
             all_solutions, is_proportional = given_der.find_commutator()
 
-            first_integral_max_degree = max(
-                given_der_sympy.polynomials[0].total_degree(),
-                given_der_sympy.polynomials[1].total_degree()
-            ) + 2
 
-            fisrt_integrals = given_der.find_first_integral(
-                max_degree=first_integral_max_degree,
-                is_truncated_search=True)
-
-            results_dict = fisrt_integrals["first_integrals"]
-            print(f"BEFORE SYMPY CAST: {results_dict}")
-            results_dict_sympy = {}
-
-            for hash, integral in results_dict.items():
-                results_dict_sympy[hash] = given_der.polynomial_to_sympy(integral,given_der.variables)
-
-            print(f"AFTER SYMPY CAST: {results_dict_sympy}")
             # Формуємо JSON-сумісний словник
             found_dict = {}
             for s_id, sol in all_solutions.items():
                 der_obj = sol["derivation_solution"]
                 found_dict[str(s_id)] = {
-                    "is_valid": bool(sol["is_valid"]),
                     "is_proportional": bool(sol["is_proportional"]),
                     "commuting_derivative": der_obj.to_sympy(),
                     "system_dim" : sol["system_dim"]
 
                 }
+
+            # first_integral_max_degree = max(
+            #     given_der_sympy.polynomials[0].total_degree(),
+            #     given_der_sympy.polynomials[1].total_degree()
+            # ) + 2
+            #
+            # fisrt_integrals = given_der.find_first_integral(
+            #     max_degree=first_integral_max_degree,
+            #     is_truncated_search=True)
+            #
+            # results_dict = fisrt_integrals["first_integrals"]
+            # print(f"BEFORE SYMPY CAST: {results_dict}")
+            # results_dict_sympy = {}
+            #
+            # for hash, integral in results_dict.items():
+            #     results_dict_sympy[hash] = given_der.polynomial_to_sympy(integral, given_der.variables)
+            #
+            # print(f"AFTER SYMPY CAST: {results_dict_sympy}")
 
             result_payload = {
                 "status": "success",
@@ -164,10 +165,10 @@ def worker():
                 "hash" : given_der.hash_polynomialPygen(given_der.polynomials),
                 "GIVEN": given_der.to_sympy(),
                 "RANK": 1 if is_proportional else 2,
-                "ANALYZE_LOG_RESULT": found_dict,
-                "critical_points_types" : given_der.classify_critical_points(),
-                "jacobian": [[str(cell) for cell in row] for row in given_der.get_jacobian()],
-                "first_integrals": results_dict_sympy,
+                "CENTRALIZER": found_dict,
+                # "critical_points_types" : given_der.classify_critical_points(),
+                # "jacobian": [[str(cell) for cell in row] for row in given_der.get_jacobian()],
+                # "first_integrals": results_dict_sympy,
                 "time": time.time() - start_t
             }
         except Exception as e:
