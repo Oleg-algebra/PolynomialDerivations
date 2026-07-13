@@ -338,7 +338,7 @@ class Derivation:
                 max_deg_var.append(
                     self.get_polynomial_degree(poly,self.variables)
                 )
-            max_k = max(max_deg_var)
+            max_k = max(max_deg_var) + 2
 
         while current_k <= max_k:
 
@@ -637,6 +637,7 @@ if __name__ == "__main__":
     # l, k, n, m, alpha, beta = (2, 1, 2, 0, 6, -8)
     l, k, n, m, alpha, beta = (2, 0, 2, 0, 1, 1)
     l, k, n, m, alpha, beta = [5, 6, 4, 0, -9, 5]
+    l, k, n, m, alpha, beta = [9,0,0,7,-14,0]
 
     x, y = giac('x, y')
     f_x:Pygen = alpha*x**k*y**n
@@ -659,13 +660,17 @@ if __name__ == "__main__":
     for hash, solution in all_solutions.items():
         print(hash)
         print(solution)
-
-    first_integral_results = der.find_first_integral(max_degree=inf,is_truncated_search=True)
+    given_der_sympy = der.to_sympy()
+    first_integral_max_degree = max(
+        given_der_sympy.polynomials[0].total_degree(),
+        given_der_sympy.polynomials[1].total_degree()
+    ) + 2
+    first_integral_results = der.find_first_integral(max_degree=first_integral_max_degree,
+                                                     is_truncated_search=True)
 
     for idx,integral in enumerate(first_integral_results["first_integrals"].items()):
         print(f"[INTEGRAL # {idx}]: Hash: {integral[0]} --- Expression: {integral[1]}")
-    else:
-        print(f"NO FIRST INTEGRALS")
+
 
 
     print(f"execution time: {end - start}")
