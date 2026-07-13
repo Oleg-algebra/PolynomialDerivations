@@ -117,25 +117,22 @@ def worker():
     while True:
         status = MPI.Status()
         # Чекаємо на завдання від Master
-        params = comm.recv(source=0, tag=MPI.ANY_TAG, status=status)
+        given_der_sympy: Derivation = comm.recv(source=0, tag=MPI.ANY_TAG, status=status)
 
         if status.Get_tag() == TAG_STOP:
             break
 
         try:
-            l, k, n, m, alpha, beta = params
-            x, y = giac('x, y')
-            print(f"[PARAMETERS]: {l, k, n, m, alpha, beta}")
 
-            # Обчислення
-            m1 = giac(alpha) * x ** k * y ** n
-            m2 = giac(beta) * x ** l * y ** m
 
             start_t = time.time()
-            given_der = Derivation([m1, m2], [x, y])
+            given_der = given_der_sympy.from_sympy()
             all_solutions, is_proportional = given_der.find_commutator()
 
-            first_integral_max_degree = max(n + k, l + m)
+            first_integral_max_degree = max(
+                given_der_sympy.polynomials[0].total_degree(),
+                given_der_sympy.polynomials[1].total_degree()
+            ) + 2
 
             fisrt_integrals = given_der.find_first_integral(
                 max_degree=first_integral_max_degree,
@@ -163,7 +160,7 @@ def worker():
 
             result_payload = {
                 "status": "success",
-                "params": params,
+                "params": given_der_sympy.polynomials,
                 "hash" : given_der.hash_polynomialPygen(given_der.polynomials),
                 "GIVEN": given_der.to_sympy(),
                 "RANK": 1 if is_proportional else 2,
@@ -173,12 +170,9 @@ def worker():
                 "first_integrals": results_dict_sympy,
                 "time": time.time() - start_t
             }
-            # given_der.draw_phase_portrait()
-            # print(f"Phase portrait for derivation {given_der.hash_polynomialPygen()} is saved.")
         except Exception as e:
-            result_payload = {"status": "error", "message": str(e), "params": params}
+            result_payload = {"status": "error", "message": str(e), "params": given_der_sympy.polynomials}
             print(result_payload)
-            # raise e
         if found_dict == {}:
             result_payload["status"] = "error"
         # Відправляємо JSON-рядок (це найбезпечніше)
@@ -190,7 +184,7 @@ def worker():
 
 
 def master(total_it, case_id):
-    from case_functions2 import get_parameters
+    from case_functions2 import get_monomials
 
     with silence_giac():
         from giacpy import giac
@@ -204,28 +198,17 @@ def master(total_it, case_id):
         giac('debug_infolevel:=0')
         giac('threads_allowed:=0')
 
-    def is_already_computed(params, existing_hashes):
+    def is_already_computed(derivation: Derivation, existing_hashes):
         """
         Перевіряє, чи була деривація з такими параметрами вже обчислена.
 
-        params: кортеж (l, k, n, m, alpha, beta)
+        derivation: представник класу Derivation
         existing_hashes: set() із хешами, зчитаними з вашого JSONL файлу
         """
-        l, k, n, m, alpha, beta = params
-        x, y = giac('x, y')
 
-        # 1. Створюємо мономи точно за вашою формулою
-        # Використовуємо .normal() для стабілізації представлення в Giac
-        m1 = (giac(alpha) * x ** k * y ** n).normal()
-        m2 = (giac(beta) * x ** l * y ** m).normal()
-
-        # 2. Створюємо об'єкт деривації
-        # Примітка: Об'єкт Derivation повинен мати метод hash_polynomialPygen
-        # який використовує hashlib.sha256
-        temp_der = Derivation([m1, m2], [x, y])
 
         # 3. Отримуємо стабільний хеш
-        current_hash = temp_der.hash_polynomialPygen(temp_der.polynomials)
+        current_hash = derivation.hash_polynomialPygen(derivation.polynomials)
 
         # 4. Перевірка наявності
         if current_hash in existing_hashes:
@@ -245,11 +228,13 @@ def master(total_it, case_id):
 
     processed_hashes = get_existing_hashes()
     print(f"[*] Завантажено {len(processed_hashes)} існуючих результатів.")
-
+    x, y = giac('x, y')
     # Роздаємо перші завдання
     for worker_id in range(1, size):
         if tests_sent < total_it:
-            params = get_parameters(case_id, **limit_cfg)
+
+            listPygen = get_monomials(case_id, **limit_cfg,vars=[x, y])
+            params = Derivation(listPygen,[x, y]).to_sympy()
             comm.send(params, dest=worker_id, tag=TAG_JOB)
             tests_sent += 1
 
@@ -287,14 +272,17 @@ def master(total_it, case_id):
         # Відправляємо нове завдання або стоп-сигнал
         if tests_sent < total_it:
             while True:
-                params = get_parameters(case_id, **limit_cfg)
+
+                listPygen = get_monomials(case_id, **limit_cfg, vars=[x, y])
+                params = Derivation(listPygen, [x, y])
                 is_already_exists, h = is_already_computed(params, processed_hashes)
 
                 if not is_already_exists:
                     print("FOUND A NEW SET OF PARAMETERS")
                     break
                 print("ALREADY EXISTS")
-            comm.send(params, dest=worker_id, tag=TAG_JOB)
+
+            comm.send(params.to_sympy(), dest=worker_id, tag=TAG_JOB)
             tests_sent += 1
         else:
             comm.send(None, dest=worker_id, tag=TAG_STOP)
@@ -319,14 +307,6 @@ if __name__ == "__main__":
         end = time.time()
         print(f"Done! Collected {len(results)} tests.")
         print(f"Total time: {end - start}")
-        # for i in range(len(results)):
-        #     print()
-        #     print(f"count {i}")
-        #     res = results[i]
-        #     # print(res.keys())
-        #     # print(res)
-        #     for k ,v in res.items():
-        #         print(k," : ",v)
         print("=======ALL DONE=======")
         exit(0)
     else:
