@@ -1,11 +1,14 @@
 import numpy as np
+from giacpy.giacpy import Pygen, giac
 
-def get_parameters(case: int,
-                   min_power:int,
-                   max_power:int,
-                   min_coeff:int,
-                   max_coeff:int,
-                   ):
+
+def get_monomials(case: int,
+                  min_power:int,
+                  max_power:int,
+                  min_coeff:int,
+                  max_coeff:int,
+                  vars: list[Pygen] = (giac("x"),giac("y"))
+                  ):
     cases={
         111: arbitrary,
         101: alpha_beta_zero,
@@ -23,7 +26,14 @@ def get_parameters(case: int,
 
     }
 
-    return cases[case](min_power, max_power, min_coeff, max_coeff)
+    l, k, n, m, alpha, beta = cases[case](min_power, max_power, min_coeff, max_coeff)
+    x, y = vars
+    print(f"[PARAMETERS]: {l, k, n, m, alpha, beta}")
+
+    # Обчислення
+    m1 = giac(alpha) * x ** k * y ** n
+    m2 = giac(beta) * x ** l * y ** m
+    return (m1, m2)
 
 
 def arbitrary(min_power, max_power, min_coeff, max_coeff):
