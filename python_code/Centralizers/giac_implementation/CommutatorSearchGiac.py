@@ -237,7 +237,8 @@ class Derivation:
         # Повертаємо новий екземпляр класу з Giac-об'єктами
         return Derivation(polynomials=g_polynomials, variables=g_vars)
 
-    def polynomial_to_sympy(self,polynomial: Pygen, variables: List[Pygen | Any]) -> Poly:
+    @staticmethod
+    def polynomial_to_sympy(polynomial: Pygen, variables: List[Pygen | Any]) -> Poly:
         s_vars = symbols([str(v) for v in variables])
         p_str = str(polynomial.normal())
         s_expr = sympify(p_str)
@@ -245,7 +246,8 @@ class Derivation:
         # 2. Створюємо SymPy Poly. Це важливо для збереження методів .LT(), .coeffs() тощо.
         return Poly(s_expr, *s_vars)
 
-    def polynomial_from_sympy(self, polynomial: Poly) -> Pygen:
+    @staticmethod
+    def polynomial_from_sympy(polynomial: Poly) -> Pygen:
 
         # 2. Перетворюємо SymPy Poly назад у вираз, а потім у рядок
         # p.as_expr() видаляє специфічну обгортку Poly, залишаючи чистий поліном
