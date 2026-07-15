@@ -16,16 +16,21 @@ class Derivation:
     polynomials: List[Pygen | Poly] # SymPy Expressions
     variables: List[Pygen | Any]
 
+    def __post_init__(self):
+
+        if len(self.polynomials) != len(self.variables):
+            raise ValueError(
+                f"List's lengthens are not equal "
+                f"polynomials number is {len(self.polynomials)}, but variables number is {len(self.variables)}."
+            )
+
+
     def apply(self, expression) -> Pygen:
         """
         poly: об'єкт giac (поліном)
         components: список [f_x, f_y]
         vars: список змінних [x, y]
         """
-        # res:Pygen = 0
-        # for f, v in zip(self.polynomials, self.variables):
-        #     res += f * expression.diff(v)
-        # return res.normal()
 
         res = sum(f * expression.diff(v) for f, v in zip(self.polynomials, self.variables))
         return res.normal()
@@ -250,7 +255,7 @@ class Derivation:
 
 
 
-    def find_commutator(self, max_k = None) -> tuple:
+    def find_commutator(self, max_k = None) -> Tuple:
         """Швидкий пошук через nullspace матриці."""
         current_k = 0
 
@@ -559,10 +564,10 @@ class Derivation:
 
 
 if __name__ == "__main__":
-    l, k, n, m, alpha, beta = (8, 9, 5, 8, 1, 1)
+    # l, k, n, m, alpha, beta = (8, 9, 5, 8, 1, 1)
     # l, k, n, m, alpha, beta = (2, 1, 2, 0, 6, -8)
-    l, k, n, m, alpha, beta = (2, 0, 2, 0, 1, 1)
-    l, k, n, m, alpha, beta = [5, 6, 4, 0, -9, 5]
+    # l, k, n, m, alpha, beta = (2, 0, 2, 0, 1, 1)
+    # l, k, n, m, alpha, beta = [5, 6, 4, 0, -9, 5]
     l, k, n, m, alpha, beta = [9,0,0,7,-14,0]
 
     x, y = giac('x, y')
@@ -575,27 +580,12 @@ if __name__ == "__main__":
     print(dct)
     print(f"Given derivative: {der}")
 
-    # commuting_derivative, is_proportional = commut_search.find_commutator()
-    # print(f"Commuting derivative: {commuting_derivative}")
-    # print(f"Is proportional: {is_proportional}")
+
     start = time.time()
     all_solutions,is_proportional = der.find_commutator(max_k= None)
     end = time.time()
 
 
-    for hash, solution in all_solutions.items():
-        print(hash)
-        print(solution)
-    given_der_sympy = der.to_sympy()
-    first_integral_max_degree = max(
-        given_der_sympy.polynomials[0].total_degree(),
-        given_der_sympy.polynomials[1].total_degree()
-    ) + 2
-    first_integral_results = der.find_first_integral(max_degree=first_integral_max_degree,
-                                                     is_truncated_search=True)
-
-    for idx,integral in enumerate(first_integral_results["first_integrals"].items()):
-        print(f"[INTEGRAL # {idx}]: Hash: {integral[0]} --- Expression: {integral[1]}")
 
 
 

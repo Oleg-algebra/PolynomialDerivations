@@ -1,5 +1,26 @@
+from typing import List
+
 import numpy as np
 from giacpy.giacpy import Pygen, giac
+from poly_tools import generate_sparse_random_poly
+
+def idenctical_polynomials(
+                  min_power: int,
+                  max_power: int,
+                  min_coeff: int,
+                  max_coeff: int,
+                  zero_percentage: float = 0.60,
+                  vars: list[Pygen] = (giac("x"),giac("y"))
+                    ) -> List[Pygen]:
+    degree = np.random.randint(0, max_power + 1)
+    polynomial = generate_sparse_random_poly(
+        variables=vars,
+        degree=degree,
+        zero_percentage=zero_percentage,
+        value_range=(min_coeff,max_coeff)
+    )
+
+    return [polynomial,polynomial]
 
 
 def get_monomials(case: int,
@@ -7,7 +28,7 @@ def get_monomials(case: int,
                   max_power:int,
                   min_coeff:int,
                   max_coeff:int,
-                  vars: list[Pygen] = (giac("x"),giac("y"))
+                  vars: List[Pygen] = (giac("x"),giac("y"))
                   ):
     cases={
         111: arbitrary,

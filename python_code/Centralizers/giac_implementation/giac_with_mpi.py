@@ -2,15 +2,37 @@ import time
 import os
 import argparse
 import sys
+
+from giacpy import Pygen
 from mpi4py import MPI
 from contextlib import contextmanager
 
 import json
 import datetime
 import uuid
-from typing import Any
-
+from typing import Any, List, Tuple
+from giacpy import giac
 from poly_tools import hash_polynomialPygen
+from case_functions2 import idenctical_polynomials, get_monomials
+
+def get_polynomials_list() -> Tuple:
+
+    case_id = 111
+    coeff_majorant = 20
+    limit_cfg = {"min_power": 0,
+                 "max_power": 10,
+                 "min_coeff": -coeff_majorant,
+                 "max_coeff": coeff_majorant}
+    x, y = giac('x, y')
+    variables = [x,y]
+    # listPygen = get_monomials(case_id,
+    #                           **limit_cfg,
+    #                           vars=variables)
+    listPygen = idenctical_polynomials(zero_percentage=0.6,
+                                       vars=variables,
+                                       **limit_cfg)
+
+    return listPygen, variables
 
 
 def get_existing_hashes(filename="results_log.jsonl"):
@@ -224,11 +246,9 @@ def master(total_it, case_id):
 
         return False, current_hash
 
-    coeff_majorant = 20
-    limit_cfg = {"min_power": 0,
-                 "max_power": 10,
-                 "min_coeff": -coeff_majorant,
-                 "max_coeff": coeff_majorant}
+
+
+
 
     final_results = []
     tests_sent = 0
@@ -236,13 +256,13 @@ def master(total_it, case_id):
 
     processed_hashes = get_existing_hashes()
     print(f"[*] Завантажено {len(processed_hashes)} існуючих результатів.")
-    x, y = giac('x, y')
     # Роздаємо перші завдання
     for worker_id in range(1, size):
         if tests_sent < total_it:
 
-            listPygen = get_monomials(case_id, **limit_cfg,vars=[x, y])
-            params = Derivation(listPygen,[x, y]).to_sympy()
+
+            listPygen, variables = get_polynomials_list()
+            params = Derivation(listPygen,variables).to_sympy()
             comm.send(params, dest=worker_id, tag=TAG_JOB)
             tests_sent += 1
 
@@ -281,8 +301,9 @@ def master(total_it, case_id):
         if tests_sent < total_it:
             while True:
 
-                listPygen = get_monomials(case_id, **limit_cfg, vars=[x, y])
-                params = Derivation(listPygen, [x, y])
+                # listPygen = get_monomials(case_id, **limit_cfg, vars=[x, y])
+                listPygen, variables = get_polynomials_list()
+                params = Derivation(listPygen, variables)
                 is_already_exists, h = is_already_computed(params, processed_hashes)
 
                 if not is_already_exists:
