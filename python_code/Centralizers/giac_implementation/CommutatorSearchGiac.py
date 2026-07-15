@@ -1,6 +1,6 @@
 import time
 from math import inf
-
+import gc
 from dataclasses import dataclass
 from giacpy import  syst2mat, solve, matrix
 import matplotlib.pyplot as plt
@@ -44,7 +44,7 @@ class Derivation:
         Формула для компонент: c_k = self(other.polynomials[k]) - other(self.polynomials[k])
         """
         if self.variables != other.variables:
-            raise ValueError("Змінні деривацій повинні збігатися!")
+            raise ValueError("Змінні диференціювань повинні збігатися!")
 
         new_polynomials = [
             (self.apply(other.polynomials[k]) - other.apply(self.polynomials[k])).normal()
@@ -198,21 +198,29 @@ class Derivation:
         Конвертує поточну деривацію з Giac у SymPy.Poly для передачі через MPI/Pool.
         """
         s_vars = None
-
         s_polynomials = []
+
         for p in self.polynomials:
             s_poly, sympy_vars = polynomial_to_sympy(p,self.variables)
             if s_vars == None:
-                s_vars = sympy_vars
+                s_vars = list(sympy_vars)
             s_polynomials.append(s_poly)
 
-        return Derivation(polynomials=s_polynomials, variables=s_vars)
+        # Створюємо новий чистий об'єкт контейнера
+        sympy_derivation = Derivation(polynomials=s_polynomials, variables=s_vars)
+
+        # Руйнуємо локальні вказівники на важкі SymPy об'єкти в поточному стеку
+        s_vars = None
+        s_polynomials = None
+        s_poly = None
+        sympy_vars = None
+
+        return sympy_derivation
 
     def from_sympy(self) -> 'Derivation':
         """
         Конвертує деривацію з SymPy назад у Giac для виконання швидких обчислень.
         """
-        from giacpy import giac
 
         # 1. Відновлюємо змінні Giac
         # Створюємо список об'єктів giac(gen) на основі імен символів SymPy
@@ -222,15 +230,13 @@ class Derivation:
         for p in self.polynomials:
             g_polynomials.append(polynomial_from_sympy(p))
 
-        # Повертаємо новий екземпляр класу з Giac-об'єктами
-        return Derivation(polynomials=g_polynomials, variables=g_vars)
+        giac_derivation = Derivation(polynomials=g_polynomials, variables=g_vars)
 
+        # Чистимо локальні посилання
+        g_vars = None
+        g_polynomials = None
 
-
-
-
-
-
+        return giac_derivation
 
     def get_sparsity_info(self,M) -> tuple:
         # Загальна кількість елементів
@@ -250,15 +256,9 @@ class Derivation:
         density = (non_zeros / total_cells) * 100
         return density, non_zeros
 
-
-
-
-
-
     def find_commutator(self, max_k = None) -> Tuple:
         """Швидкий пошук через nullspace матриці."""
         current_k = 0
-
         all_solutions = {}
 
         if max_k is None:
@@ -285,6 +285,10 @@ class Derivation:
             # print(equations)
             if not equations:
                 current_k += 1
+                # Чистимо невикористані змінні
+                unknown_der = None
+                coeffs = None
+                bracket_lie = None
                 continue
 
             M = syst2mat(equations,coeffs)
@@ -303,6 +307,7 @@ class Derivation:
                 potential_solution = Derivation(new_polynomials,self.variables)
 
                 if potential_solution.is_zero():
+                    potential_solution = None
                     # print(f"[ZERO SOLUTION]: Derivation: {self} --- k = {current_k} --- max_K = {max_k}")
                     continue
 
@@ -318,12 +323,24 @@ class Derivation:
                         "system_dim" : [int(d) for d in M.dim()]
                     }
                 if hash_der not in all_solutions:
-                    if not self.check_proportionality(self,potential_solution):
-                        return {hash_der : log_result
-                        }, False
+                    if not self.check_proportionality(self, potential_solution):
+                        # Перед швидким виходом чистимо пам'ять
+                        unknown_der = None
+                        coeffs = None
+                        bracket_lie = None
+                        M = None
+                        gc.collect()
+                        return {hash_der: log_result}, False
 
                     all_solutions[hash_der] = log_result
 
+            # Очищення наприкінці кожної ітерації ступеня
+            unknown_der = None
+            coeffs = None
+            bracket_lie = None
+            M = None
+            giac('purge()')
+            gc.collect()
 
             current_k += 1
 
@@ -331,10 +348,23 @@ class Derivation:
             print(f"--> empty {self}")
             # raise RuntimeError("[ONLY ZERO SOLUTIONS!!!]")
             all_solutions[hash_polynomialPygen(self.polynomials)] = {
-                "derivation_solution": self,
+                "derivation_solution": Derivation(list(self.polynomials), list(self.variables)),
                 "is_proportional": True,
                 "system_dim": []
             }
+
+        # ПЕРЕД ТИМ ЯК ПОВЕРНУТИ РЕЗУЛЬТАТ, ОБНУЛЯЄМО ТИМЧАСОВІ ОБ'ЄКТИ:
+        potential_solution = None
+        vector = None
+        M = None
+        equations = None
+        bracket_lie = None
+        unknown_der = None
+
+        # Викликаємо збір сміття
+
+        gc.collect()
+
         return all_solutions, True
 
 
@@ -348,7 +378,7 @@ class Derivation:
                                                     self.variables)
             polys.append(poly)
             all_coeffs += coeffs
-        return Derivation(polys, self.variables), all_coeffs
+        return Derivation(polys, self.variables), all_coeffs #TODO: check
 
     def is_solution_valid(self, solution: 'Derivation'):
         lie_bracket = self @ solution
@@ -402,6 +432,10 @@ class Derivation:
 
             if not equations:
                 current_deg += 1
+                # Чистимо посилання
+                unknown_poly = None
+                coeffs = None
+                df_expr = None
                 continue
 
             # 4. Формуємо матрицю системи та знаходимо її ядро (nullspace) через Giac
@@ -434,6 +468,16 @@ class Derivation:
                         results[hash_poly] = found_poly
                         is_non_trivial_found = True
 
+            # АГРЕСИВНЕ ОЧИЩЕННЯ ПАМ'ЯТІ всередині циклу пошуку інтегралів
+            unknown_poly = None
+            coeffs = None
+            df_expr = None
+            equations = None
+            M = None
+            solution_basis = None
+
+            giac('purge()')  # Скидаємо символьний кеш Giac
+            gc.collect()
 
             # Якщо знайшли нетривіальні інтеграли на поточному кроці степеня — зупиняємо пошук
             if is_truncated_search and is_non_trivial_found:
@@ -546,6 +590,14 @@ class Derivation:
         filename = f"{directory+str(hash)}.png"
         plt.savefig(filename, dpi=150)
         plt.close()  # Закриваємо фігуру, щоб не переповнювати RAM
+
+        # Чистимо важкі об'єкти графіків
+        s_der = None
+        U = None
+        V = None
+        X = None
+        Y = None
+        gc.collect()
         return filename
 
 
