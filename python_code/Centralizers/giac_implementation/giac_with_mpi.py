@@ -1,38 +1,45 @@
+import gc
 import time
 import os
 import argparse
 import sys
-
-from giacpy import Pygen
+import multiprocessing
+from giacpy.giacpy import Pygen
 from mpi4py import MPI
 from contextlib import contextmanager
 
 import json
 import datetime
 import uuid
-from typing import Any, List, Tuple
-from giacpy import giac
+from typing import Any, Tuple, List
+
 from poly_tools import hash_polynomialPygen
-from case_functions2 import idenctical_polynomials, get_monomials
+from sympy.core.cache import clear_cache
 
-def get_polynomials_list() -> Tuple:
+from case_functions2 import idenctical_polynomials, get_monomials, idenctical_polynomials_sympy
 
+os.environ["SYMPY_USE_CACHE"] = "no"
+
+def get_polynomials_list(
+        variables = None
+) -> List[Pygen]:
+
+    if variables == None:
+        raise ValueError("Polynomial variables is not defined. Defined variables.")
     case_id = 111
     coeff_majorant = 20
     limit_cfg = {"min_power": 0,
-                 "max_power": 10,
+                 "max_power": 5,
                  "min_coeff": -coeff_majorant,
                  "max_coeff": coeff_majorant}
-    x, y = giac('x, y')
-    variables = [x,y]
     # listPygen = get_monomials(case_id,
     #                           **limit_cfg,
     #                           vars=variables)
-    listPygen = idenctical_polynomials(zero_percentage=0.6,
+    listPygen = idenctical_polynomials(zero_percentage=0.0,
                                        vars=variables,
                                        **limit_cfg)
 
-    return listPygen, variables
+    return listPygen
 
 
 def get_existing_hashes(filename="results_log.jsonl"):
@@ -126,20 +133,44 @@ TAG_RESULT = 2
 TAG_STOP = 3
 
 
-
-def worker():
-    # Late import всередині воркера
+def run_commutator_isolated(given_der_sympy) -> dict:
+    """
+    Ця функція виконується в окремому ізольованому процесі.
+    Вона завантажує giacpy, робить обчислення і повністю завершується,
+    гарантуючи 100% вивільнення C++ оперативної пам'яті.
+    """
     with silence_giac():
         from giacpy import giac
-        from CommutatorSearchGiac import Derivation
-        # Ініціалізація ядра
+        # Ініціалізація локального ядра
         _ = giac('x')
         giac('nthreads:=1')
         giac('print_time:=0')
-        giac('timeout:=40')
-        # У воркері після giac('x')
-        giac('debug_infolevel:=0')
-        giac('threads_allowed:=0')  # Жорстке вимкнення будь-яких потоків на рівні C++
+        giac('threads_allowed:=0')
+
+        # Виконуємо обчислення
+        given_der = given_der_sympy.from_sympy()
+        all_solutions, is_proportional = given_der.find_commutator()
+
+        found_dict = {}
+        for s_id, sol in all_solutions.items():
+            der_obj = sol["derivation_solution"]
+            found_dict[str(s_id)] = {
+                "is_proportional": bool(sol["is_proportional"]),
+                "commuting_derivative": der_obj.to_sympy(),
+                "system_dim": sol["system_dim"]
+            }
+
+        result = {
+            "status": "success",
+            "RANK": 1 if is_proportional else 2,
+            "CENTRALIZER": found_dict
+        }
+
+        # Очищення перед виходом з процесу
+        giac('restart')
+        return result
+
+def worker():
 
     while True:
         status = MPI.Status()
@@ -151,66 +182,42 @@ def worker():
         if status.Get_tag() == TAG_STOP:
             break
 
+        start_t = time.time()
         try:
-
-
-            start_t = time.time()
-            given_der = given_der_sympy.from_sympy()
-            all_solutions, is_proportional = given_der.find_commutator()
-
-
-
-            for s_id, sol in all_solutions.items():
-                der_obj = sol["derivation_solution"]
-                found_dict[str(s_id)] = {
-                    "is_proportional": bool(sol["is_proportional"]),
-                    "commuting_derivative": der_obj.to_sympy(),
-                    "system_dim" : sol["system_dim"]
-
-                }
-
-            # first_integral_max_degree = max(
-            #     given_der_sympy.polynomials[0].total_degree(),
-            #     given_der_sympy.polynomials[1].total_degree()
-            # ) + 2
-            #
-            # fisrt_integrals = given_der.find_first_integral(
-            #     max_degree=first_integral_max_degree,
-            #     is_truncated_search=True)
-            #
-            # results_dict = fisrt_integrals["first_integrals"]
-            # print(f"BEFORE SYMPY CAST: {results_dict}")
-            # results_dict_sympy = {}
-            #
-            # for hash, integral in results_dict.items():
-            #     results_dict_sympy[hash] = given_der.polynomial_to_sympy(integral, given_der.variables)
-            #
-            # print(f"AFTER SYMPY CAST: {results_dict_sympy}")
+            # Запускаємо обчислення в ізольованому пулі з 1 процесу
+            # max_tasks_per_child=1 гарантує, що процес буде вбито після виконання
+            with multiprocessing.Pool(processes=1, maxtasksperchild=1) as pool:
+                async_res = pool.apply_async(run_commutator_isolated, (given_der_sympy,))
+                # Встановлюємо таймаут на випадок зависання Giac
+                calc_res = async_res.get(timeout=50)
 
             result_payload = {
                 "status": "success",
                 "params": given_der_sympy.polynomials,
-                "hash" : hash_polynomialPygen(given_der.polynomials),
-                "GIVEN": given_der.to_sympy(),
-                "RANK": 1 if is_proportional else 2,
-                "CENTRALIZER": found_dict,
-                # "critical_points_types" : given_der.classify_critical_points(),
-                # "jacobian": [[str(cell) for cell in row] for row in given_der.get_jacobian()],
-                # "first_integrals": results_dict_sympy,
+                "hash": hash_polynomialPygen(given_der_sympy.polynomials),
+                "GIVEN": given_der_sympy,
+                "RANK": calc_res["RANK"],
+                "CENTRALIZER": calc_res["CENTRALIZER"],
                 "time": time.time() - start_t
             }
         except Exception as e:
             print(f"[FOUND ERROR] {e}")
             result_payload = {"status": "error", "message": str(e), "params": given_der_sympy.polynomials}
             print(result_payload)
-        if found_dict == {}:
-            result_payload["status"] = "error"
+
         # Відправляємо JSON-рядок (це найбезпечніше)
         comm.send(result_payload, dest=0, tag=TAG_RESULT)
 
-        # Примусове очищення Giac після кожного завдання
-        with silence_giac():
-            giac('restart')
+
+        # !!! ПОВНЕ ЗВІЛЬНЕННЯ ВСІХ ЛОКАЛЬНИХ ПОСИЛАНЬ В РОБОЧОМУ ЦИКЛІ ВОРКЕРА !!!
+        given_der = None
+        given_der_sympy = None
+        all_solutions = None
+        found_dict = None
+        result_payload = None
+
+        gc.collect()
+        clear_cache()
 
 
 def master(total_it, case_id):
@@ -228,62 +235,63 @@ def master(total_it, case_id):
         giac('debug_infolevel:=0')
         giac('threads_allowed:=0')
 
-    def is_already_computed(derivation: 'Derivation', existing_hashes):
-        """
-        Перевіряє, чи була деривація з такими параметрами вже обчислена.
+    def is_already_computed(poly_list: List[Pygen], existing_hashes):
+        current_hash = hash_polynomialPygen(poly_list)
+        return current_hash in existing_hashes, current_hash
 
-        derivation: представник класу Derivation
-        existing_hashes: set() із хешами, зчитаними з вашого JSONL файлу
-        """
+    coeff_majorant = 20
+    limit_cfg = {"min_power": 0,
+                 "max_power": 5,
+                 "min_coeff": -coeff_majorant,
+                 "max_coeff": coeff_majorant}
 
-
-        # 3. Отримуємо стабільний хеш
-        current_hash = hash_polynomialPygen(derivation.polynomials)
-
-        # 4. Перевірка наявності
-        if current_hash in existing_hashes:
-            return True, current_hash
-
-        return False, current_hash
-
-
-
-
-
-    final_results = []
+    success_count = 0
     tests_sent = 0
     tests_received = 0
 
     processed_hashes = get_existing_hashes()
     print(f"[*] Завантажено {len(processed_hashes)} існуючих результатів.")
+
+    x, y = giac('x, y')
+    variables = [x, y]
+
     # Роздаємо перші завдання
     for worker_id in range(1, size):
         if tests_sent < total_it:
 
+            # listPygen = get_monomials(case_id, **limit_cfg,vars=variables)
+            listPygen = get_polynomials_list(variables)
+            # Конвертуємо у SymPy одразу, щоб очистити Giac-версію
+            der_giac = Derivation(listPygen, variables)
+            params = der_giac.to_sympy()
 
-            listPygen, variables = get_polynomials_list()
-            params = Derivation(listPygen,variables).to_sympy()
             comm.send(params, dest=worker_id, tag=TAG_JOB)
             tests_sent += 1
 
+            # !!! ОЧИЩЕННЯ ПІСЛЯ ПЕРШОЇ ВІДПРАВКИ !!!
+            der_giac = None
+            listPygen = None
+            params = None
+
+            gc.collect()
+
     # Збираємо результати
     while tests_received < total_it:
-        print(tests_received)
+        print(f"Tests received: {tests_received}/{total_it}")
         status = MPI.Status()
 
-        raw_json = comm.recv(source=MPI.ANY_SOURCE, tag=TAG_RESULT, status=status)
-        # res_data = json.loads(raw_json)
-        res_data = raw_json
+        res_data = comm.recv(source=MPI.ANY_SOURCE, tag=TAG_RESULT, status=status)
+
         worker_id = status.Get_source()
         tests_received += 1
         current_hash = res_data.get('hash')
 
         if res_data["status"] == "success":
-            final_results.append(res_data)
+            success_count += 1
 
             if current_hash in processed_hashes:
                 print(f"[!] Дублікат пропущено: {current_hash}")
-                raise RuntimeError("[DUPLICATE!!!]")
+                # raise RuntimeError("[DUPLICATE!!!]")
             else:
                 append_to_research_log(res_data)
                 processed_hashes.add(current_hash)
@@ -301,22 +309,50 @@ def master(total_it, case_id):
         if tests_sent < total_it:
             while True:
 
-                # listPygen = get_monomials(case_id, **limit_cfg, vars=[x, y])
-                listPygen, variables = get_polynomials_list()
-                params = Derivation(listPygen, variables)
-                is_already_exists, h = is_already_computed(params, processed_hashes)
+                # listPygen = get_monomials(case_id, **limit_cfg, vars=variables)
+                listPygen = get_polynomials_list(variables)
+                # Перевіряємо за чистим списком поліномів
+                is_already_exists, h = is_already_computed(listPygen, processed_hashes)
 
                 if not is_already_exists:
+                    der_giac = Derivation(listPygen, variables)
+                    params = der_giac.to_sympy()
                     print("FOUND A NEW SET OF PARAMETERS")
                     break
                 print("ALREADY EXISTS")
 
-            comm.send(params.to_sympy(), dest=worker_id, tag=TAG_JOB)
-            tests_sent += 1
-        else:
-            comm.send(None, dest=worker_id, tag=TAG_STOP)
+                # Запобігаємо витоку при частих дублікатах в Master-процесі
+                with silence_giac():
+                    giac('restart')
+                    giac('purge()')
+                    x, y = giac('x, y')
+                    variables = [x, y]
+                gc.collect()
 
-    return final_results
+            comm.send(params, dest=worker_id, tag=TAG_JOB)
+            tests_sent += 1
+
+            # !!! КРИТИЧНЕ ОЧИЩЕННЯ ПІСЛЯ КОЖНОЇ УСПІШНОЇ ВІДПРАВКИ В MASTER !!!
+            der_giac = None
+            params = None
+            listPygen = None
+            res_data = None
+
+            with silence_giac():
+                giac('restart')
+                giac('purge()')
+                x, y = giac('x, y')
+                variables = [x, y]
+
+            gc.collect()
+            clear_cache()
+        else:
+            # Якщо завдань більше немає, надсилаємо сигнал зупинки і занулюємо результат
+            comm.send(None, dest=worker_id, tag=TAG_STOP)
+            res_data = None
+            gc.collect()
+
+    return success_count
 
 
 
@@ -332,9 +368,9 @@ if __name__ == "__main__":
         print(f"Case: {case}, Total Iterations: {total_tests}")
         # Вкажіть параметри тут прямо
         start = time.time()
-        results = master(total_it=total_tests, case_id=case)
+        success_runs = master(total_it=total_tests, case_id=case)
         end = time.time()
-        print(f"Done! Collected {len(results)} tests.")
+        print(f"Done! Collected {success_runs} tests.")
         print(f"Total time: {end - start}")
         print("=======ALL DONE=======")
         exit(0)
