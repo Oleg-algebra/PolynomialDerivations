@@ -1,12 +1,22 @@
 import hashlib
 import itertools
-
+import gc
 import numpy as np
 from typing import List, Tuple, Any
 from giacpy import giac
 from giacpy.giacpy import Pygen
 from sympy import symbols, sympify, Poly, Symbol
 
+
+# Глобальний кеш символів SymPy для уникнення витоків при багаторазовому створенні symbols()
+_SYMPY_VARS_CACHE = {}
+
+def get_sympy_symbols(var_names: List[str]) -> tuple[Symbol]:
+    """Повертає символи SymPy з глобального кешу, запобігаючи витоку ОЗУ."""
+    cache_key = tuple(var_names)
+    if cache_key not in _SYMPY_VARS_CACHE:
+        _SYMPY_VARS_CACHE[cache_key] = symbols(var_names)
+    return _SYMPY_VARS_CACHE[cache_key]
 
 # noinspection PyTypeChecker
 def get_polynomial_degree(polynomial: Pygen | Poly,
@@ -16,17 +26,24 @@ def get_polynomial_degree(polynomial: Pygen | Poly,
     return int(polynomial.total_degree(variables))
 
 def hash_polynomialPygen(polynomials: list[Pygen | Poly]) -> int:
-    # 1. Формуємо стабільний рядок (використовуємо .normal() для Giac-об'єктів)
-    # Важливо, щоб порядок поліномів у списку був завжди однаковим
-    key = "--".join([str(p.normal()) for p in polynomials])
+    """Швидке детерміноване хешування без створення зайвих Giac C++ об'єктів."""
+    # Замість p.normal() беремо str(p). Якщо p вже спрощений, це працює миттєво і без витоків
+    key_parts = []
+    for p in polynomials:
+        if hasattr(p, 'as_expr'):  # Якщо це SymPy Poly
+            key_parts.append(str(p.as_expr()))
+        else:  # Якщо це Giac Pygen
+            key_parts.append(str(p))
 
-    # 2. Використовуємо hashlib для отримання детермінованого хешу
-    # sha256 повертає 64-символьний хеш, який завжди однаковий для однакового рядка
+    key = "--".join(key_parts)
+
     hash_object = hashlib.sha256(key.encode('utf-8'))
     hex_dig = hash_object.hexdigest()
 
-    # 3. Конвертуємо частину hex-рядка в int (наприклад, 16 символів для 64-бітного int)
-    # або весь рядок, якщо вам потрібне дуже велике число
+    # Руйнуємо локальні посилання на рядки
+    key = None
+    key_parts = None
+
     return int(hex_dig[:16], 16)
 
 def create_multivariate_poly(degree,
@@ -64,8 +81,13 @@ def create_multivariate_poly(degree,
             poly += term
             coeffs.append(c_val)
 
-    # .normal() переводить поліном у раціональне представлення для швидших обчислень в Giac
-    return poly.normal(), coeffs
+    # Повертаємо спрощений поліном
+    res_poly = poly.normal()
+
+    # Примусово очищуємо проміжні накопичення
+    poly = None
+
+    return res_poly, coeffs
 
 
 def polynomial_from_sympy(polynomial: Poly) -> Pygen:
@@ -74,17 +96,27 @@ def polynomial_from_sympy(polynomial: Poly) -> Pygen:
     # p.as_expr() видаляє специфічну обгортку Poly, залишаючи чистий поліном
     p_str = str(polynomial.as_expr())
 
-    # 3. Створюємо об'єкт Giac.
-    # Метод .normal() гарантує, що Giac правильно розпарсить і спростить вираз
-    return giac(p_str).normal()
+    res = giac(p_str).normal()
+    p_str = None
+    return res
 
 def polynomial_to_sympy(polynomial: Pygen, variables: List[Pygen | Any]) -> Tuple[Poly,Symbol]:
-    s_vars = symbols([str(v) for v in variables])
-    p_str = str(polynomial.normal())
+    # Використовуємо наш безпечний кешований генератор символів SymPy
+    var_names = [str(v) for v in variables]
+    s_vars = get_sympy_symbols(var_names)
+
+    # Отримуємо чистий нормалізований рядок з Giac без створення нового об'єкта
+    p_str = str(polynomial)
     s_expr = sympify(p_str)
 
-    # 2. Створюємо SymPy Poly. Це важливо для збереження методів .LT(), .coeffs() тощо.
-    return Poly(s_expr, *s_vars), s_vars
+    res_poly = Poly(s_expr, *s_vars)
+
+    # Звільняємо пам'ять у локальному стеку
+    p_str = None
+    s_expr = None
+    var_names = None
+
+    return res_poly, s_vars
 
 def is_poly_zero(poly: Pygen):
     return poly.normal() == 0
@@ -136,4 +168,59 @@ def generate_sparse_random_poly(variables: List[Pygen],
     # subst(вираз, список_того_що_міняємо, список_на_що_міняємо)
     sparse_poly = abstract_poly.subst(coeffs, giac_values)
 
-    return sparse_poly.normal()
+    res_poly = sparse_poly.normal()
+
+    # !!! ВАЖЛИВА ДЕСТРУКТУРИЗАЦІЯ ДЛЯ ЗВІЛЬНЕННЯ C++ КУПИ !!!
+    abstract_poly = None
+    coeffs = None
+    giac_values = None
+    sparse_poly = None
+    final_array = None
+    random_values = None
+
+    # Викликаємо збирач сміття для видалення С++ дескрипторів
+    gc.collect()
+
+    return res_poly
+
+
+def generate_sparse_random_poly_sympy(variables_names: List[str],
+                                      degree: int,
+                                      zero_percentage: float = 0.60,
+                                      value_range: Tuple[int, int] = (-10, 10)) -> Poly:
+    """Генерує випадковий розріджений поліном суто через SymPy (без залучення Giac)."""
+    s_vars = symbols(variables_names)
+    num_vars = len(s_vars)
+
+    # 1. Генеруємо всі можливі комбінації степенів (мономи)
+    all_exponents = []
+    for exponents in itertools.product(range(degree + 1), repeat=num_vars):
+        if sum(exponents) <= degree:
+            all_exponents.append(exponents)
+
+    num_coeffs = len(all_exponents)
+    if num_coeffs == 0:
+        return Poly(0, *s_vars)
+
+    # 2. Визначаємо кількість нульових коефіцієнтів
+    num_zeros = int(np.round(num_coeffs * zero_percentage))
+    num_values = num_coeffs - num_zeros
+
+    # 3. Генеруємо випадкові значення
+    random_values = np.random.randint(value_range[0], value_range[1] + 1, size=num_values)
+    random_values[random_values == 0] = 1
+
+    final_coeffs = np.concatenate([random_values, np.zeros(num_zeros, dtype=int)])
+    np.random.shuffle(final_coeffs)
+
+    # 4. Будуємо поліном SymPy
+    poly_expr = 0
+    for coeffs_val, exponents in zip(final_coeffs, all_exponents):
+        if coeffs_val == 0:
+            continue
+        term = coeffs_val
+        for var, exp in zip(s_vars, exponents):
+            term *= (var ** exp)
+        poly_expr += term
+
+    return Poly(poly_expr, *s_vars)
