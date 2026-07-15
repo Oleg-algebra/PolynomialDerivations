@@ -28,7 +28,7 @@ def get_monomials(case: int,
 
     l, k, n, m, alpha, beta = cases[case](min_power, max_power, min_coeff, max_coeff)
     x, y = vars
-    print(f"[PARAMETERS]: {l, k, n, m, alpha, beta}")
+    # print(f"[PARAMETERS]: {l, k, n, m, alpha, beta}")
 
     # Обчислення
     m1 = giac(alpha) * x ** k * y ** n

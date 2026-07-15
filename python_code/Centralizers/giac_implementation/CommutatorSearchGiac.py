@@ -1,18 +1,15 @@
 import time
 from math import inf
 
-from sympy import sympify, Poly, symbols, Symbol
-from typing import List, Any
 from dataclasses import dataclass
-from giacpy import giac,  syst2mat, solve, matrix
-from giacpy.giacpy import Pygen
-import numpy as np
+from giacpy import  syst2mat, solve, matrix
 import matplotlib.pyplot as plt
 from sympy import lambdify
 import os
-import hashlib
+from poly_tools import *
 
 
+# noinspection PyTypeChecker
 @dataclass
 class Derivation:
     """Represents a derivation D = P1*d/dx1 + P2*d/dx2."""
@@ -51,7 +48,7 @@ class Derivation:
 
         return Derivation(polynomials=new_polynomials, variables=self.variables)
 
-    def find_critical_points(self) -> List[Pygen]:
+    def find_critical_points(self) -> List[List[Pygen]]:
         """
         Знаходить критичні точки деривації, розв'язуючи систему P1=0, P2=0...
         Використовує базиси Грьобнера всередині Giac для пошуку всіх коренів.
@@ -195,20 +192,13 @@ class Derivation:
         """
         Конвертує поточну деривацію з Giac у SymPy.Poly для передачі через MPI/Pool.
         """
-
-
-        # Створюємо символи SymPy
-        s_vars = symbols([str(v) for v in self.variables])
+        s_vars = None
 
         s_polynomials = []
         for p in self.polynomials:
-            # 1. str(p) у Giac використовує ^ для степеня.
-            # sympify(..., convert_xor=True) коректно перетворить ^ у **.
-            p_str = str(p.normal())
-            s_expr = sympify(p_str)
-
-            # 2. Створюємо SymPy Poly. Це важливо для збереження методів .LT(), .coeffs() тощо.
-            s_poly = Poly(s_expr, *s_vars)
+            s_poly, sympy_vars = polynomial_to_sympy(p,self.variables)
+            if s_vars == None:
+                s_vars = sympy_vars
             s_polynomials.append(s_poly)
 
         return Derivation(polynomials=s_polynomials, variables=s_vars)
@@ -225,64 +215,16 @@ class Derivation:
 
         g_polynomials = []
         for p in self.polynomials:
-            # 2. Перетворюємо SymPy Poly назад у вираз, а потім у рядок
-            # p.as_expr() видаляє специфічну обгортку Poly, залишаючи чистий поліном
-            p_str = str(p.as_expr())
-
-            # 3. Створюємо об'єкт Giac.
-            # Метод .normal() гарантує, що Giac правильно розпарсить і спростить вираз
-            g_poly = giac(p_str).normal()
-            g_polynomials.append(g_poly)
+            g_polynomials.append(polynomial_from_sympy(p))
 
         # Повертаємо новий екземпляр класу з Giac-об'єктами
         return Derivation(polynomials=g_polynomials, variables=g_vars)
 
-    @staticmethod
-    def polynomial_to_sympy(polynomial: Pygen, variables: List[Pygen | Any]) -> Poly:
-        s_vars = symbols([str(v) for v in variables])
-        p_str = str(polynomial.normal())
-        s_expr = sympify(p_str)
-
-        # 2. Створюємо SymPy Poly. Це важливо для збереження методів .LT(), .coeffs() тощо.
-        return Poly(s_expr, *s_vars)
-
-    @staticmethod
-    def polynomial_from_sympy(polynomial: Poly) -> Pygen:
-
-        # 2. Перетворюємо SymPy Poly назад у вираз, а потім у рядок
-        # p.as_expr() видаляє специфічну обгортку Poly, залишаючи чистий поліном
-        p_str = str(polynomial.as_expr())
-
-        # 3. Створюємо об'єкт Giac.
-        # Метод .normal() гарантує, що Giac правильно розпарсить і спростить вираз
-        return giac(p_str).normal()
-
-    def create_poly_simple(self,degree,symbol_coeffs:str) -> tuple[Pygen,List[Pygen]]:
-        # 1. Оголошуємо основні змінні
-
-        poly: Pygen = 0
-        coeffs = []
 
 
-        # 2. Вкладені цикли для формування всіх комбінацій x^i * y^j
-        # Умова i + j <= degree гарантує, що загальний ступінь моному не перевищить d
-        for i in range(degree + 1):
-            for j in range(degree + 1 - i):
-                # Створюємо назву коефіцієнта (c0, c1, c2...)
-                c_name = f"{symbol_coeffs}{i}_{j}"
-                c_val = giac(c_name)
 
-                # Формуємо доданок: c_k * x^i * y^j
-                term = c_val * (self.variables[0] ** i) * (self.variables[1] ** j)
 
-                # Додаємо до загального полінома
-                poly += term
 
-                # Зберігаємо коефіцієнт у список для подальшого розв'язання системи
-                coeffs.append(c_val)
-
-        # .rat() перетворює результат у внутрішню раціональну форму для швидкості
-        return poly, coeffs
 
 
     def get_sparsity_info(self,M) -> tuple:
@@ -303,27 +245,9 @@ class Derivation:
         density = (non_zeros / total_cells) * 100
         return density, non_zeros
 
-    def hash_polynomialPygen(self, polynomials: list[Pygen | Poly]) -> int:
-        # 1. Формуємо стабільний рядок (використовуємо .normal() для Giac-об'єктів)
-        # Важливо, щоб порядок поліномів у списку був завжди однаковим
-        key = "--".join([str(p.normal()) for p in polynomials])
 
-        # 2. Використовуємо hashlib для отримання детермінованого хешу
-        # sha256 повертає 64-символьний хеш, який завжди однаковий для однакового рядка
-        hash_object = hashlib.sha256(key.encode('utf-8'))
-        hex_dig = hash_object.hexdigest()
 
-        # 3. Конвертуємо частину hex-рядка в int (наприклад, 16 символів для 64-бітного int)
-        # або весь рядок, якщо вам потрібне дуже велике число
-        return int(hex_dig[:16], 16)
 
-    def get_polynomial_degree(self,polynomial: Pygen | Poly,variables: list[Pygen]) -> int:
-        poly_str = str(polynomial)
-        poly_symb = sympify(poly_str)
-        symb_vars = symbols([str(v) for v in variables])
-        sympy_polynomial = Poly(poly_symb,symb_vars)
-
-        return sympy_polynomial.total_degree()
 
 
     def find_commutator(self, max_k = None) -> tuple:
@@ -336,7 +260,7 @@ class Derivation:
             max_deg_var = []
             for poly in self.polynomials:
                 max_deg_var.append(
-                    self.get_polynomial_degree(poly,self.variables)
+                    get_polynomial_degree(poly,self.variables)
                 )
             max_k = max(max_deg_var) + 2
 
@@ -382,7 +306,7 @@ class Derivation:
                     raise RuntimeError("[!!!][INVALID SOLUTION]")
                     continue
 
-                hash_der = potential_solution.hash_polynomialPygen(potential_solution.polynomials)
+                hash_der = hash_polynomialPygen(potential_solution.polynomials)
                 log_result = {
                         "derivation_solution" : potential_solution,
                         "is_proportional" : self.check_proportionality(self, potential_solution),
@@ -401,7 +325,7 @@ class Derivation:
         if all_solutions == {}:
             print(f"--> empty {self}")
             # raise RuntimeError("[ONLY ZERO SOLUTIONS!!!]")
-            all_solutions[self.hash_polynomialPygen(self.polynomials)] = {
+            all_solutions[hash_polynomialPygen(self.polynomials)] = {
                 "derivation_solution": self,
                 "is_proportional": True,
                 "system_dim": []
@@ -414,7 +338,9 @@ class Derivation:
         all_coeffs = []
         polys = []
         for i in range(len(self.variables)):
-            poly, coeffs = self.create_poly_simple(degree,chr(ord('a') + i))
+            poly, coeffs = create_multivariate_poly(degree,
+                                                    chr(ord('a') + i),
+                                                    self.variables)
             polys.append(poly)
             all_coeffs += coeffs
         return Derivation(polys, self.variables), all_coeffs
@@ -449,7 +375,7 @@ class Derivation:
 
         # Якщо max_degree не вказано, беремо максимум зі степенів компонент деривації
         if  max_degree is None :
-            max_deg_var = [self.get_polynomial_degree(poly, self.variables) for poly in self.polynomials]
+            max_deg_var = [get_polynomial_degree(poly, self.variables) for poly in self.polynomials]
             max_degree = max(max_deg_var) + 1
 
 
@@ -459,7 +385,9 @@ class Derivation:
         while current_deg <= max_degree:
             print(f"[Poly DEGREE]: {current_deg}")
             # 1. Генеруємо невідомий поліном f та його символьні коефіцієнти
-            unknown_poly, coeffs = self.create_poly_simple(current_deg, "c")
+            unknown_poly, coeffs = create_multivariate_poly(current_deg,
+                                                            "c",
+                                                            self.variables)
 
             # 2. Обчислюємо дію деривації: D(f)
             df_expr = self.apply(unknown_poly)
@@ -491,11 +419,11 @@ class Derivation:
                 if not  self._is_nontrivial_integral(found_poly):
                     if not is_trivial_found:
                         # print(f"[FOUND TRIVIAL FIRST INTEGRAL]: {found_poly}")
-                        results[self.hash_polynomialPygen([found_poly])] = found_poly
+                        results[hash_polynomialPygen([found_poly])] = found_poly
                         is_trivial_found = True
                         # print(f"ADDED TRIVIAL --> {self} --> Results: {results}")
                 else:
-                    hash_poly = self.hash_polynomialPygen([found_poly])
+                    hash_poly = hash_polynomialPygen([found_poly])
                     if  hash_poly not in results:
                         # print(f"[FOUND NON TRIVIAL FIRST INTEGRAL]: {self}: {found_poly}")
                         results[hash_poly] = found_poly
@@ -519,22 +447,21 @@ class Derivation:
 
         return {"first_integrals": results}
 
-    def _is_poly_zero(self, poly: Pygen):
-        return poly.normal() == 0
+
 
     def _validate_first_integral(self,poly: Pygen):
         res = self.apply(poly)
-        return self._is_poly_zero(res)
+        return is_poly_zero(res)
 
     def _is_nontrivial_integral(self, poly: Pygen) -> bool:
         """
         Перевіряє, чи є знайдений інтеграл нетривіальним.
         Поліном тривіальний, якщо він тотожно рівний 0 або є чистою константою.
         """
-        if self._is_poly_zero(poly):
+        if is_poly_zero(poly):
             return False
         # Якщо степінь відносно всіх змінних системи дорівнює 0 — це константа C
-        if self.get_polynomial_degree(poly, self.variables) == 0:
+        if get_polynomial_degree(poly, self.variables) == 0:
             return False
 
         return True
@@ -592,7 +519,7 @@ class Derivation:
         except:
             pass  # Якщо точок немає або вони символьні — ігноруємо
 
-        hash = self.hash_polynomialPygen(self.polynomials)
+        hash = hash_polynomialPygen(self.polynomials)
         # Оформлення
         plt.title(f"Phase Portrait (Hash: {hash})")
         plt.xlabel(str(self.variables[0]))

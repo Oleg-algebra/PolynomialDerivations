@@ -10,6 +10,8 @@ import datetime
 import uuid
 from typing import Any
 
+from poly_tools import hash_polynomialPygen
+
 
 def get_existing_hashes(filename="results_log.jsonl"):
     existing_hashes = set()
@@ -51,7 +53,9 @@ def serialize_research_data(obj: Any) -> Any:
     return obj
 
 
-def append_to_research_log(result: dict, filename: str = "results_log.jsonl",directory: str = "logs/"):
+def append_to_research_log(result: dict,
+                           filename: str = "results_log.jsonl",
+                           directory: str = "logs/"):
     """
     Додає один результат обчислення в файл.
     """
@@ -59,7 +63,8 @@ def append_to_research_log(result: dict, filename: str = "results_log.jsonl",dir
     payload = {
         # "id": str(uuid.uuid4())[:8],
         # "timestamp": datetime.datetime.now().isoformat(),
-        "data": serialize_research_data(result)
+        "data": serialize_research_data(result),
+        # "data": result
     }
 
     if os.path.exists(directory) and os.path.isdir(directory):
@@ -117,7 +122,9 @@ def worker():
     while True:
         status = MPI.Status()
         # Чекаємо на завдання від Master
-        given_der_sympy: Derivation = comm.recv(source=0, tag=MPI.ANY_TAG, status=status)
+        given_der_sympy: 'Derivation' = comm.recv(source=0, tag=MPI.ANY_TAG, status=status)
+        # Формуємо JSON-сумісний словник
+        found_dict = {}
 
         if status.Get_tag() == TAG_STOP:
             break
@@ -130,8 +137,7 @@ def worker():
             all_solutions, is_proportional = given_der.find_commutator()
 
 
-            # Формуємо JSON-сумісний словник
-            found_dict = {}
+
             for s_id, sol in all_solutions.items():
                 der_obj = sol["derivation_solution"]
                 found_dict[str(s_id)] = {
@@ -162,7 +168,7 @@ def worker():
             result_payload = {
                 "status": "success",
                 "params": given_der_sympy.polynomials,
-                "hash" : given_der.hash_polynomialPygen(given_der.polynomials),
+                "hash" : hash_polynomialPygen(given_der.polynomials),
                 "GIVEN": given_der.to_sympy(),
                 "RANK": 1 if is_proportional else 2,
                 "CENTRALIZER": found_dict,
@@ -172,6 +178,7 @@ def worker():
                 "time": time.time() - start_t
             }
         except Exception as e:
+            print(f"[FOUND ERROR] {e}")
             result_payload = {"status": "error", "message": str(e), "params": given_der_sympy.polynomials}
             print(result_payload)
         if found_dict == {}:
@@ -199,7 +206,7 @@ def master(total_it, case_id):
         giac('debug_infolevel:=0')
         giac('threads_allowed:=0')
 
-    def is_already_computed(derivation: Derivation, existing_hashes):
+    def is_already_computed(derivation: 'Derivation', existing_hashes):
         """
         Перевіряє, чи була деривація з такими параметрами вже обчислена.
 
@@ -209,7 +216,7 @@ def master(total_it, case_id):
 
 
         # 3. Отримуємо стабільний хеш
-        current_hash = derivation.hash_polynomialPygen(derivation.polynomials)
+        current_hash = hash_polynomialPygen(derivation.polynomials)
 
         # 4. Перевірка наявності
         if current_hash in existing_hashes:
