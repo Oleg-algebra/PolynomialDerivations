@@ -18,8 +18,8 @@ export MKL_NUM_THREADS=1
 export GIAC_NTHREADS=1
 CASE="identical_polynomials"
 IS_MONOMIAL="false"
-
-
+MAX_DEGREE=10
+TIME_OUT=100
 
 echo "Запуск MPI з обмеженням ресурсів для Case $CASE (Monomial: $IS_MONOMIAL)..."
 
@@ -31,7 +31,7 @@ mpirun --mca btl_openlib_warn_no_device_params_found 0 \
        --bind-to core --map-by core \
        -n 10 \
        /media/olegt/MyData/University/Phd-Math/Disertation/PolynomialDerivations/.venv/bin/python3 giac_with_mpi.py \
-       --case $CASE --it 20 --is-monomial $IS_MONOMIAL
+       --case $CASE --it 30 --is-monomial $IS_MONOMIAL --max-degree $MAX_DEGREE --time-out $TIME_OUT
 
 # Звуковий сигнал про завершення ( PhD-бонус )
 # play -n synth 0.5 sin 880

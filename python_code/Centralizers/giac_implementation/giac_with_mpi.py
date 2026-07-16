@@ -28,6 +28,7 @@ def get_polynomials_list(
         variables = None,
         is_monomial_case = False,
         case_id: str = "111",
+        max_degree:int = 10
 ) -> List[Pygen]:
 
     if variables == None:
@@ -35,7 +36,7 @@ def get_polynomials_list(
 
     coeff_majorant = 20
     limit_cfg = {"min_power": 0,
-                 "max_power": 5,
+                 "max_power": max_degree,
                  "min_coeff": -coeff_majorant,
                  "max_coeff": coeff_majorant}
 
@@ -181,8 +182,8 @@ def run_commutator_isolated(given_der_sympy) -> dict:
         giac('restart')
         return result
 
-def worker():
-
+def worker(time_out = 300):
+    print(f"[WORKER {rank}]: time_out = {time_out}")
     while True:
         status = MPI.Status()
         # Чекаємо на завдання від Master
@@ -200,8 +201,8 @@ def worker():
             with multiprocessing.Pool(processes=1, maxtasksperchild=1) as pool:
                 async_res = pool.apply_async(run_commutator_isolated, (given_der_sympy,))
                 # Встановлюємо таймаут на випадок зависання Giac
-                calc_res = async_res.get(timeout=50)
-
+                calc_res = async_res.get(timeout=time_out)
+            # print(f"[CALC RESULTS]: {calc_res}")
             result_payload = {
                 "status": "success",
                 "params": given_der_sympy.polynomials,
@@ -233,7 +234,8 @@ def worker():
 
 def master(total_it = 100,
            case_id:  str = "111",
-           is_monomial_case: bool = False
+           is_monomial_case: bool = False,
+           max_degree = 10
            ):
 
     with silence_giac():
@@ -269,7 +271,8 @@ def master(total_it = 100,
             # listPygen = get_monomials(case_id, **limit_cfg,vars=variables)
             listPygen = get_polynomials_list(variables = variables,
                                              case_id= case_id,
-                                             is_monomial_case = is_monomial_case)
+                                             is_monomial_case = is_monomial_case,
+                                             max_degree = max_degree)
             # Конвертуємо у SymPy одразу, щоб очистити Giac-версію
             der_giac = Derivation(listPygen, variables)
             params = der_giac.to_sympy()
@@ -322,7 +325,8 @@ def master(total_it = 100,
                 listPygen = get_polynomials_list(
                                             variables = variables,
                                             case_id= case_id,
-                                            is_monomial_case = is_monomial_case)
+                                            is_monomial_case = is_monomial_case,
+                                            max_degree = max_degree)
                 # Перевіряємо за чистим списком поліномів
                 is_already_exists, h = is_already_computed(listPygen, processed_hashes)
 
@@ -389,8 +393,10 @@ if __name__ == "__main__":
         parser.add_argument("--is-monomial", type=str2bool, default=False,
                             help="Use monomials (True/False)")
 
-        args = parser.parse_args()
-        case, total_tests, is_monomial_case = args.case, args.it, args.is_monomial
+        parser.add_argument("--max-degree", type=int, default=10, help="maximal polynomial degree")
+
+        args, _ = parser.parse_known_args()
+        case, total_tests, is_monomial_case, max_degree = args.case, args.it, args.is_monomial, args.max_degree
         print(f"Case: {case}, Total Iterations: {total_tests}")
         # Тепер args.is_monomial — це чистий Python bool (True або False)
         print(f"Is Monomial mode active: {is_monomial_case}")
@@ -398,11 +404,16 @@ if __name__ == "__main__":
         start = time.time()
         success_runs = master(total_it=total_tests,
                               case_id=case,
-                              is_monomial_case = is_monomial_case)
+                              is_monomial_case = is_monomial_case,
+                              max_degree = max_degree)
         end = time.time()
         print(f"Done! Collected {success_runs} tests.")
         print(f"Total time: {end - start}")
         print("=======ALL DONE=======")
         exit(0)
     else:
-        worker()
+        parser_worker = argparse.ArgumentParser(description="MPI Commutator Search Test for WORKERS")
+        parser_worker.add_argument("--time-out", type=int, required=True, help="time_out(sec) for pool")
+        args, _ = parser_worker.parse_known_args()
+        time_out = args.time_out
+        worker(time_out)
