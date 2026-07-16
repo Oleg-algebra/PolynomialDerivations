@@ -378,7 +378,7 @@ class Derivation:
                                                     self.variables)
             polys.append(poly)
             all_coeffs += coeffs
-        return Derivation(polys, self.variables), all_coeffs #TODO: check
+        return Derivation(polys, self.variables), all_coeffs
 
     def is_solution_valid(self, solution: 'Derivation'):
         lie_bracket = self @ solution
@@ -637,7 +637,7 @@ if __name__ == "__main__":
     all_solutions,is_proportional = der.find_commutator(max_k= None)
     end = time.time()
 
-
+    print(polynomial_to_sympy(der.polynomials[1],der.variables))
 
 
 
