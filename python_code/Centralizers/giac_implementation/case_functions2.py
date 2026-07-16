@@ -26,7 +26,7 @@ def idenctical_polynomials_sympy(min_power: int,
     )
     return [poly, poly]
 
-def idenctical_polynomials(
+def identical_polynomials(
         min_power: int,
         max_power: int,
         min_coeff: int,
@@ -78,6 +78,9 @@ def get_monomials(case: int,
     }
     if vars is None:
         raise ValueError("Polynomial variables is not defined. Defined variables.")
+
+    if case not in cases:
+        raise KeyError(f"Key {case} is not in cases list")
 
     # 1. Отримуємо числові параметри степенів та коефіцієнтів
     l, k, n, m, alpha, beta = cases[case](min_power, max_power, min_coeff, max_coeff)
