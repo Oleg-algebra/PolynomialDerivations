@@ -60,7 +60,7 @@ def get_monomials(case: int,
                   min_coeff: int,
                   max_coeff: int,
                   vars: List[Pygen] = None
-                  ) -> Tuple[Pygen, Pygen]:
+                  ) -> List[Pygen]:
     cases = {
         111: arbitrary,
         101: alpha_beta_zero,
@@ -95,7 +95,7 @@ def get_monomials(case: int,
     m1_str = None
     m2_str = None
 
-    return (m1, m2)
+    return [m1, m2]
 
 
 def arbitrary(min_power, max_power, min_coeff, max_coeff):
