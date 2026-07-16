@@ -55,7 +55,7 @@ def get_polynomials_list(
     return listPygen
 
 
-def get_existing_hashes(filename="results_log.jsonl"):
+def get_existing_hashes(filename="logs/results_log.jsonl"):
     existing_hashes = set()
     try:
         with open(filename, "r", encoding="utf-8") as f:
