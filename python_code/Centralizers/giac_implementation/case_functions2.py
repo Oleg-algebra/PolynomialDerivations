@@ -37,18 +37,25 @@ def identical_polynomials(
     if vars is None:
         raise ValueError("Polynomial variables is not defined. Defined variables.")
 
-    degree = np.random.randint(0, max_power + 1)
-    polynomial = generate_sparse_random_poly(
-        variables=vars,
-        degree=degree,
-        zero_percentage=zero_percentage,
-        value_range=(min_coeff, max_coeff)
-    )
+
+    while True:
+        degree = np.random.randint(0, max_power + 1)
+        polynomial = generate_sparse_random_poly(
+            variables=vars,
+            degree=degree,
+            zero_percentage=zero_percentage,
+            value_range=(min_coeff, max_coeff)
+        )
+        if polynomial.normal() != 0:
+            break
+        # print("----> [ZERO POLYNOMIAL FOUND]")
+        polynomial = None
 
     # Повертаємо чисту копію списку
     res_list = [polynomial, polynomial]
 
     # Занулюємо локальну змінну для швидшої утилізації
+    # print(polynomial.normal() == 0)
     polynomial = None
 
     return res_list

@@ -184,7 +184,7 @@ def run_commutator_isolated(given_der_sympy) -> dict:
         return result
 
 def worker(time_out = 300):
-    print(f"[WORKER {rank}]: time_out = {time_out}")
+
     while True:
         status = MPI.Status()
         # Чекаємо на завдання від Master
