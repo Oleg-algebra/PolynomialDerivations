@@ -16,26 +16,37 @@ from typing import Any, Tuple, List
 from poly_tools import hash_polynomialPygen
 from sympy.core.cache import clear_cache
 
-from case_functions2 import idenctical_polynomials, get_monomials, idenctical_polynomials_sympy
+from case_functions2 import identical_polynomials, get_monomials
 
 os.environ["SYMPY_USE_CACHE"] = "no"
 
+polynomial_cases = {
+    "identical_polynomials" : identical_polynomials
+}
+
 def get_polynomials_list(
-        variables = None
+        variables = None,
+        is_monomial_case = False,
+        case_id: str = "111",
 ) -> List[Pygen]:
 
     if variables == None:
         raise ValueError("Polynomial variables is not defined. Defined variables.")
-    case_id = 111
+
     coeff_majorant = 20
     limit_cfg = {"min_power": 0,
                  "max_power": 5,
                  "min_coeff": -coeff_majorant,
                  "max_coeff": coeff_majorant}
-    # listPygen = get_monomials(case_id,
-    #                           **limit_cfg,
-    #                           vars=variables)
-    listPygen = idenctical_polynomials(zero_percentage=0.0,
+
+    if is_monomial_case:
+        listPygen = get_monomials(int(case_id),
+                                  **limit_cfg,
+                                  vars=variables)
+    else:
+        if not case_id in polynomial_cases:
+            raise KeyError(f"Key {case_id} is not in polynomial_cases")
+        listPygen = polynomial_cases[case_id](zero_percentage=0.0,
                                        vars=variables,
                                        **limit_cfg)
 
@@ -220,8 +231,10 @@ def worker():
         clear_cache()
 
 
-def master(total_it, case_id):
-    from case_functions2 import get_monomials
+def master(total_it = 100,
+           case_id:  str = "111",
+           is_monomial_case: bool = False
+           ):
 
     with silence_giac():
         from giacpy import giac
@@ -239,12 +252,6 @@ def master(total_it, case_id):
         current_hash = hash_polynomialPygen(poly_list)
         return current_hash in existing_hashes, current_hash
 
-    coeff_majorant = 20
-    limit_cfg = {"min_power": 0,
-                 "max_power": 5,
-                 "min_coeff": -coeff_majorant,
-                 "max_coeff": coeff_majorant}
-
     success_count = 0
     tests_sent = 0
     tests_received = 0
@@ -260,7 +267,9 @@ def master(total_it, case_id):
         if tests_sent < total_it:
 
             # listPygen = get_monomials(case_id, **limit_cfg,vars=variables)
-            listPygen = get_polynomials_list(variables)
+            listPygen = get_polynomials_list(variables = variables,
+                                             case_id= case_id,
+                                             is_monomial_case = is_monomial_case)
             # Конвертуємо у SymPy одразу, щоб очистити Giac-версію
             der_giac = Derivation(listPygen, variables)
             params = der_giac.to_sympy()
@@ -310,7 +319,10 @@ def master(total_it, case_id):
             while True:
 
                 # listPygen = get_monomials(case_id, **limit_cfg, vars=variables)
-                listPygen = get_polynomials_list(variables)
+                listPygen = get_polynomials_list(
+                                            variables = variables,
+                                            case_id= case_id,
+                                            is_monomial_case = is_monomial_case)
                 # Перевіряємо за чистим списком поліномів
                 is_already_exists, h = is_already_computed(listPygen, processed_hashes)
 
@@ -354,21 +366,39 @@ def master(total_it, case_id):
 
     return success_count
 
-
+def str2bool(v):
+    """Конвертує текстове значення аргументу в логічний тип bool."""
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected (True/False).')
 
 if __name__ == "__main__":
     if rank == 0:
         start_research_time = time.time()
 
         parser = argparse.ArgumentParser(description="MPI Commutator Search Test")
-        parser.add_argument("--case", type=int, required=True, help="case number")
-        parser.add_argument("--it", type=int, default=1, help="iteration number")
+        parser.add_argument("--case", type=str, required=True, help="case_id")
+        parser.add_argument("--it", type=int, default=1, help="iteration_number")
+
+        # Використовуємо наш кастомний тип str2bool
+        parser.add_argument("--is-monomial", type=str2bool, default=False,
+                            help="Use monomials (True/False)")
+
         args = parser.parse_args()
-        case, total_tests = args.case, args.it
+        case, total_tests, is_monomial_case = args.case, args.it, args.is_monomial
         print(f"Case: {case}, Total Iterations: {total_tests}")
+        # Тепер args.is_monomial — це чистий Python bool (True або False)
+        print(f"Is Monomial mode active: {is_monomial_case}")
         # Вкажіть параметри тут прямо
         start = time.time()
-        success_runs = master(total_it=total_tests, case_id=case)
+        success_runs = master(total_it=total_tests,
+                              case_id=case,
+                              is_monomial_case = is_monomial_case)
         end = time.time()
         print(f"Done! Collected {success_runs} tests.")
         print(f"Total time: {end - start}")
