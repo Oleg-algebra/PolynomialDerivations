@@ -28,7 +28,8 @@ def get_polynomials_list(
         variables = None,
         is_monomial_case = False,
         case_id: str = "111",
-        max_degree:int = 10
+        max_degree:int = 10,
+        zero_percentage:float=0.4
 ) -> List[Pygen]:
 
     if variables == None:
@@ -47,7 +48,7 @@ def get_polynomials_list(
     else:
         if not case_id in polynomial_cases:
             raise KeyError(f"Key {case_id} is not in polynomial_cases")
-        listPygen = polynomial_cases[case_id](zero_percentage=0.0,
+        listPygen = polynomial_cases[case_id](zero_percentage=zero_percentage,
                                        vars=variables,
                                        **limit_cfg)
 
@@ -235,9 +236,10 @@ def worker(time_out = 300):
 def master(total_it = 100,
            case_id:  str = "111",
            is_monomial_case: bool = False,
-           max_degree = 10
+           max_degree = 10,
+           zero_percentage:float = 0.4
            ):
-
+    # print(f"[ZERO PERCENT]: {zero_percentage}")
     with silence_giac():
         from giacpy import giac
         from CommutatorSearchGiac import Derivation
@@ -272,7 +274,8 @@ def master(total_it = 100,
             listPygen = get_polynomials_list(variables = variables,
                                              case_id= case_id,
                                              is_monomial_case = is_monomial_case,
-                                             max_degree = max_degree)
+                                             max_degree = max_degree,
+                                             zero_percentage = zero_percentage)
             # Конвертуємо у SymPy одразу, щоб очистити Giac-версію
             der_giac = Derivation(listPygen, variables)
             params = der_giac.to_sympy()
@@ -326,7 +329,8 @@ def master(total_it = 100,
                                             variables = variables,
                                             case_id= case_id,
                                             is_monomial_case = is_monomial_case,
-                                            max_degree = max_degree)
+                                            max_degree = max_degree,
+                                            zero_percentage = zero_percentage)
                 # Перевіряємо за чистим списком поліномів
                 is_already_exists, h = is_already_computed(listPygen, processed_hashes)
 
@@ -394,9 +398,11 @@ if __name__ == "__main__":
                             help="Use monomials (True/False)")
 
         parser.add_argument("--max-degree", type=int, default=10, help="maximal polynomial degree")
+        parser.add_argument("--zero-percent", type=int, default=40, help="zero coefficient percentage")
 
         args, _ = parser.parse_known_args()
-        case, total_tests, is_monomial_case, max_degree = args.case, args.it, args.is_monomial, args.max_degree
+        case, total_tests, is_monomial_case, max_degree, zero_percentage \
+            = args.case, args.it, args.is_monomial, args.max_degree, args.zero_percent
         print(f"Case: {case}, Total Iterations: {total_tests}")
         # Тепер args.is_monomial — це чистий Python bool (True або False)
         print(f"Is Monomial mode active: {is_monomial_case}")
@@ -405,7 +411,8 @@ if __name__ == "__main__":
         success_runs = master(total_it=total_tests,
                               case_id=case,
                               is_monomial_case = is_monomial_case,
-                              max_degree = max_degree)
+                              max_degree = max_degree,
+                              zero_percentage = zero_percentage/100)
         end = time.time()
         print(f"Done! Collected {success_runs} tests.")
         print(f"Total time: {end - start}")
