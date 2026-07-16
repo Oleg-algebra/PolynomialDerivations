@@ -152,8 +152,8 @@ def generate_sparse_random_poly(variables: List[Pygen],
     # 3. Генеруємо масив випадкових цілих чисел (за винятком нуля, щоб не спотворювати відсоток)
     # Якщо випадково згенерується 0, ми замінимо його на 1
     random_values = np.random.randint(value_range[0], value_range[1] + 1, size=num_values)
-    if zero_percentage > 0:
-        random_values[random_values == 0] = 1
+    # if zero_percentage > 0:
+    #     random_values[random_values == 0] = 1
 
     # 4. Створюємо фінальний масив: додаємо потрібну кількість нулів
     final_array = np.concatenate([random_values, np.zeros(num_zeros, dtype=int)])
@@ -181,7 +181,6 @@ def generate_sparse_random_poly(variables: List[Pygen],
 
     # Викликаємо збирач сміття для видалення С++ дескрипторів
     gc.collect()
-
     return res_poly
 
 
